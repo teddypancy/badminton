@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>羽球臨場統計表-pad版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        button, td { touch-action: manipulation; }
+        /* 徹底鎖定橫向，絕不允許左右拉動 */
+        html, body { overflow-x: hidden; width: 100%; }
+        /* 縱向書寫微調 */
+        .v-text { writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 2px; }
+
+        /* ================= 核心自適應響應式樣式 ================= */
+        /* 預設（直板/縱向螢幕）：單元格較長，方便點擊 */
+        .adaptive-py { padding-top: 0.75rem; padding-bottom: 0.75rem; } /* 相當於 py-3 */
+        .adaptive-header-mb { margin-bottom: 0.5rem; }
+        .adaptive-header-p { padding: 0.625rem; }
+
+        /* 橫板（橫向螢幕或者高度較矮時）：極致壓縮縱向高度，防止上下滾動 */
+        @media (orientation: landscape) or (max-height: 600px) {
+            .adaptive-py { padding-top: 0.2rem; padding-bottom: 0.2rem; } /* 大幅縮減高度 */
+            .adaptive-header-mb { margin-bottom: 0.125rem; }
+            .adaptive-header-p { padding: 0.375rem; }
+            body { padding-bottom: 4rem; } /* 減少底部留白 */
+        }
+    </style>
+</head>
+<body class="bg-slate-50 select-none pb-24 font-sans text-slate-800">
+    <div id="app" class="p-1 w-full mx-auto">
+        
+        <!-- 緊湊自適應黃底表頭 -->
+        <header class="bg-yellow-300 rounded-t-lg border-t border-x border-slate-400 font-bold text-slate-900 shadow-sm text-[11px] adaptive-header-p">
+            <h1 class="text-sm text-center tracking-wider adaptive-header-mb">羽球臨場統計表 (橫豎全自適應版)</h1>
+            <div class="flex justify-between items-center gap-1">
+                <div class="flex items-center gap-1">
+                    <span>日期:</span>
+                    <input type="date" v-model="matchInfo.date" class="bg-transparent border-b border-slate-800 focus:outline-none w-24 text-center">
+                </div>
+                <div class="flex items-center gap-1">
+                    <input type="text" v-model="matchInfo.playerA" placeholder="選手A" class="bg-transparent border-b border-slate-800 focus:outline-none w-14 text-center placeholder-slate-600">
+                    <span class="text-slate-700">VS</span>
+                    <input type="text" v-model="matchInfo.playerB" placeholder="選手B" class="bg-transparent border-b border-slate-800 focus:outline-none w-14 text-center placeholder-slate-600">
+                </div>
+                <div class="text-red-700 underline font-extrabold text-[10px]">
+                    {{ modeText }}
+                </div>
+            </div>
+        </header>
+
+        <!-- 主表格：100% 寬度自適應，藉由 table-fixed 嚴格管控列寬 -->
+        <div class="bg-white border-x border-b border-slate-400 rounded-b-lg p-1 shadow-sm overflow-hidden">
+            <table class="w-full text-center border-collapse text-[11px] table-fixed">
+                <tbody>
+                    <!-- 上半部：結構完全解耦平鋪版 -->
+                    
+                    <!-- 行 1：所有功能區的「表頭欄位」完全橫向對齊 -->
+                    <tr>
+                        <!-- 結算區大側邊欄保持不動 -->
+                        <td class="border border-slate-400 font-bold bg-slate-100 w-[5%]" rowspan="5">
+                            <span class="v-text mx-auto block">結算區</span>
+                        </td>
+
+                        <!-- 左側：比分看板表頭 -->
+                        <td class="border border-slate-400 font-bold bg-slate-800 text-yellow-400 text-[10px] w-[15%] adaptive-py">局數切換</td>
+                        <td class="border border-slate-400 font-bold bg-blue-900 text-white text-[10px] w-[12%] adaptive-py">己方(進攻)</td>
+                        <td class="border border-slate-400 font-bold bg-red-900 text-white text-[10px] w-[12%] adaptive-py">對方(失誤)</td>
+                        
+                        <!-- 中央隔離帶 -->
+                        <td class="border-y border-slate-200 w-[1%] bg-slate-50" rowspan="5"></td>
+
+                        <!-- 右側：多拍能力表頭 -->
+                        <td class="border border-slate-400 font-bold bg-slate-100 w-[19%] adaptive-py">多拍能力</td>
+                        <td class="border border-slate-400 font-bold bg-slate-100 w-[18%] adaptive-py">得分</td>
+                        <td class="border border-slate-400 font-bold bg-slate-100 w-[18%] adaptive-py">失分</td>
+                    </tr>
+
+                    <!-- 行 2：第一局數據 與 5拍以下 對齊 -->
+                    <tr>
+                        <td @click="currentGame = 0" class="border border-slate-400 font-bold cursor-pointer transition-colors adaptive-py" :class="currentGame === 0 ? 'bg-slate-700 text-white shadow-inner' : 'bg-slate-200 text-slate-700'">第一局</td>
+                        <td class="border border-slate-400 bg-blue-50/50 font-black text-sm text-blue-800 adaptive-py">{{ getGameScoreValues(0).us }}</td>
+                        <td class="border border-slate-400 bg-red-50/50 font-black text-sm text-red-800 adaptive-py">{{ getGameScoreValues(0).them }}</td>
+                        
+                        <td class="border border-slate-400 font-medium bg-slate-50 adaptive-py">5拍以下</td>
+                        <td @click="handleRallyClick('p5', 'score')" class="border border-slate-400 font-bold text-sm cursor-pointer active:bg-blue-100 adaptive-py" :class="activeGameData.rally.p5.score > 0 ? 'bg-amber-50 text-amber-900' : 'text-slate-300'">{{ activeGameData.rally.p5.score }}</td>
+                        <td @click="handleRallyClick('p5', 'lose')" class="border border-slate-400 font-bold text-sm cursor-pointer active:bg-blue-100 adaptive-py" :class="activeGameData.rally.p5.lose > 0 ? 'bg-amber-50 text-amber-900' : 'text-slate-300'">{{ activeGameData.rally.p5.lose }}</td>
+                    </tr>
+
+                    <!-- 行 3：第二局數據 與 6-10拍 對齊 -->
+                    <tr>
+                        <td @click="currentGame = 1" class="border border-slate-400 font-bold cursor-pointer transition-colors adaptive-py" :class="currentGame === 1 ? 'bg-slate-700 text-white shadow-inner' : 'bg-slate-200 text-slate-700'">第二局</td>
+                        <td class="border border-slate-400 bg-blue-50/50 font-black text-sm text-blue-800 adaptive-py">{{ getGameScoreValues(1).us }}</td>
+                        <td class="border border-slate-400 bg-red-50/50 font-black text-sm text-red-800 adaptive-py">{{ getGameScoreValues(1).them }}</td>
+                        
+                        <td class="border border-slate-400 font-medium bg-slate-50 adaptive-py">6-10拍</td>
+                        <td @click="handleRallyClick('p10', 'score')" class="border border-slate-400 font-bold text-sm cursor-pointer active:bg-blue-100 adaptive-py" :class="activeGameData.rally.p10.score > 0 ? 'bg-amber-50 text-amber-900' : 'text-slate-300'">{{ activeGameData.rally.p10.score }}</td>
+                        <td @click="handleRallyClick('p10', 'lose')" class="border border-slate-400 font-bold text-sm cursor-pointer active:bg-blue-100 adaptive-py" :class="activeGameData.rally.p10.lose > 0 ? 'bg-amber-50 text-amber-900' : 'text-slate-300'">{{ activeGameData.rally.p10.lose }}</td>
+                    </tr>
+
+                    <!-- 行 4：第三局數據 與 11-15拍 對齊 -->
+                    <tr>
+                        <td @click="currentGame = 2" class="border border-slate-400 font-bold cursor-pointer transition-colors adaptive-py" :class="currentGame === 2 ? 'bg-slate-700 text-white shadow-inner' : 'bg-slate-200 text-slate-700'">第三局</td>
+                        <td class="border border-slate-400 bg-blue-50/50 font-black text-sm text-blue-800 adaptive-py">{{ getGameScoreValues(2).us }}</td>
+                        <td class="border border-slate-400 bg-red-50/50 font-black text-sm text-red-800 adaptive-py">{{ getGameScoreValues(2).them }}</td>
+                        
+                        <td class="border border-slate-400 font-medium bg-slate-50 adaptive-py">11-15拍</td>
+                        <td @click="handleRallyClick('p15', 'score')" class="border border-slate-400 font-bold text-sm cursor-pointer active:bg-blue-100 adaptive-py" :class="activeGameData.rally.p15.score > 0 ? 'bg-amber-50 text-amber-900' : 'text-slate-300'">{{ activeGameData.rally.p15.score }}</td>
+                        <td @click="handleRallyClick('p15', 'lose')" class="border border-slate-400 font-bold text-sm cursor-pointer active:bg-blue-100 adaptive-py" :class="activeGameData.rally.p15.lose > 0 ? 'bg-amber-50 text-amber-900' : 'text-slate-300'">{{ activeGameData.rally.p15.lose }}</td>
+                    </tr>
+
+                    <!-- 行 5：左側合併留空（或作提示說明） 與 15拍以上 對齊 -->
+                    <tr>
+                        <td class="border border-slate-300 bg-slate-50/50 text-slate-400 text-[10px] adaptive-py" colspan="3"> 即時自動計分看板</td>
+                        
+                        <td class="border border-slate-400 font-medium bg-slate-50 adaptive-py">15拍以上</td>
+                        <td @click="handleRallyClick('p15plus', 'score')" class="border border-slate-400 font-bold text-sm cursor-pointer active:bg-blue-100 adaptive-py" :class="activeGameData.rally.p15plus.score > 0 ? 'bg-amber-50 text-amber-900' : 'text-slate-300'">{{ activeGameData.rally.p15plus.score }}</td>
+                        <td @click="handleRallyClick('p15plus', 'lose')" class="border border-slate-400 font-bold text-sm cursor-pointer active:bg-blue-100 adaptive-py" :class="activeGameData.rally.p15plus.lose > 0 ? 'bg-amber-50 text-amber-900' : 'text-slate-300'">{{ activeGameData.rally.p15plus.lose }}</td>
+                    </tr>
+
+                    <!-- 緊湊型格線分隔 -->
+                    <tr><td colspan="8" class="h-1 bg-slate-200"></td></tr>
+
+                    <!-- 下半部：診斷區（完全保留，不受影響） -->
+                    <tr>
+                        <td class="border border-slate-400 font-bold bg-slate-100 text-center" rowspan="14">
+                            <span class="v-text mx-auto block py-4">診斷區</span>
+                        </td>
+                        
+                        <!-- 非受迫性失誤表頭 -->
+                        <td class="border border-slate-400 py-1.5 font-bold bg-sky-400 text-slate-950" colspan="2">非受迫性失誤</td>
+                        <td class="border border-slate-400 py-1.5 font-bold bg-sky-600 text-white">總數:{{ totalUnforced }}</td>
+                        
+                        <td class="bg-slate-200" rowspan="14"></td> <!-- 中央分隔細帶 -->
+                        
+                        <!-- 受破性失誤與進攻表頭 -->
+                        <td class="border border-slate-400 py-1.5 font-bold bg-emerald-400 text-slate-950" colspan="2">受破性失誤</td>
+                        <td class="border border-slate-400 py-1.5 font-bold bg-emerald-600 text-white" colspan="2">總數:{{ totalForced }}</td>
+                    </tr>
+                    
+                    <!-- 次級技術屬性欄位 -->
+                    <tr>
+                        <td class="border border-slate-400 py-1 font-bold bg-sky-50 text-[10px]">類型</td>
+                        <td class="border border-slate-400 py-1 font-bold bg-sky-50 text-[10px]">出界</td>
+                        <td class="border border-slate-400 py-1 font-bold bg-sky-50 text-[10px]">不過</td>
+                        
+                        <td class="border border-slate-400 py-1 font-bold bg-emerald-50 text-[10px]">類型</td>
+                        <td class="border border-slate-400 py-1 font-bold bg-emerald-50 text-[10px]">未過</td>
+                        <td class="border border-slate-400 py-1 font-bold bg-emerald-50 text-[10px]">不及</td>
+                        <td class="border border-slate-400 py-1 font-bold bg-emerald-50 text-[10px]">判斷</td>
+                    </tr>
+
+                    <!-- 12行核心動作對稱排版 -->
+                    <tr v-for="n in 12" :key="n">
+                        <!-- 左邊非受迫項目 -->
+                        <template v-if="n <= 10">
+                            <td class="border border-slate-400 bg-sky-50/30 text-slate-700 font-medium text-[10px] adaptive-py">{{ unforcedItems[n-1] }}</td>
+                            <td @click="handleDiagnosticClick('unforced', unforcedItems[n-1], 'out')" class="border border-slate-400 font-bold text-sm cursor-pointer active:bg-sky-100 adaptive-py" :class="activeGameData.unforced[unforcedItems[n-1]].out > 0 ? 'bg-sky-100 text-sky-950 font-black' : 'text-slate-300'">{{ activeGameData.unforced[unforcedItems[n-1]].out }}</td>
+                            <td @click="handleDiagnosticClick('unforced', unforcedItems[n-1], 'net')" class="border border-slate-400 font-bold text-sm cursor-pointer active:bg-sky-100 adaptive-py" :class="activeGameData.unforced[unforcedItems[n-1]].net > 0 ? 'bg-sky-100 text-sky-950 font-black' : 'text-slate-300'">{{ activeGameData.unforced[unforcedItems[n-1]].net }}</td>
+                        </template>
+                        <template v-else-if="n === 11">
+                            <td class="border border-slate-400 bg-sky-50/30 text-slate-700 font-medium text-[10px] adaptive-py">違例擊球</td>
+                            <td @click="handleFoulClick" class="border border-slate-400 font-bold text-sm cursor-pointer active:bg-sky-100 text-center adaptive-py" colspan="2" :class="activeGameData.foulCount > 0 ? 'bg-sky-100 text-sky-950 font-black' : 'text-slate-300'">{{ activeGameData.foulCount }}</td>
+                        </template>
+                        <template v-else>
+                            <td class="border border-slate-400 bg-slate-50 adaptive-py" colspan="3"></td>
+                        </template>
+
+                        <!-- 右邊受破項目與進攻面板 -->
+                        <template v-if="n <= 8">
+                            <td class="border border-slate-400 bg-emerald-50/30 text-slate-700 font-medium text-[10px] adaptive-py">{{ forcedItems[n-1] }}</td>
+                            <td @click="handleDiagnosticClick('forced', forcedItems[n-1], 'touch')" class="border border-slate-400 font-bold text-sm cursor-pointer active:bg-emerald-100 adaptive-py" :class="activeGameData.forced[forcedItems[n-1]].touch > 0 ? 'bg-emerald-100 text-emerald-950 font-black' : 'text-slate-300'">{{ activeGameData.forced[forcedItems[n-1]].touch }}</td>
+                            <td @click="handleDiagnosticClick('forced', forcedItems[n-1], 'miss')" class="border border-slate-400 font-bold text-sm cursor-pointer active:bg-emerald-100 adaptive-py" :class="activeGameData.forced[forcedItems[n-1]].miss > 0 ? 'bg-emerald-100 text-emerald-950 font-black' : 'text-slate-300'">{{ activeGameData.forced[forcedItems[n-1]].miss }}</td>
+                            <td @click="handleDiagnosticClick('forced', forcedItems[n-1], 'fool')" class="border border-slate-400 font-bold text-sm cursor-pointer active:bg-emerald-100 adaptive-py" :class="activeGameData.forced[forcedItems[n-1]].fool > 0 ? 'bg-emerald-100 text-emerald-950 font-black' : 'text-slate-300'">{{ activeGameData.forced[forcedItems[n-1]].fool }}</td>
+                        </template>
+                        
+                        <!-- 進攻面板標題列 -->
+                        <template v-else-if="n === 9">
+                            <td class="border border-slate-400 py-1.5 font-bold bg-orange-300 text-slate-950 text-center" colspan="3">進攻面板 (己方技術得分)</td>
+                            <td class="border border-slate-400 py-1.5 font-bold bg-orange-500 text-white text-center">總計:{{ totalAttack }}</td>
+                        </template>
+                        
+                        <!-- 進攻核心按鈕：完美等寬 4 等分 -->
+                        <template v-else-if="n === 10">
+                            <td class="border border-slate-400 p-0 text-left" colspan="4" rowspan="3">
+                                <div class="flex w-full h-full text-center items-stretch">
+                                    <div @click="handleAttackClick('drop')" class="w-1/4 border-r border-slate-400 adaptive-py bg-orange-50/40 cursor-pointer active:bg-orange-200 flex flex-col justify-center px-1">
+                                        <div class="font-bold text-[10px] text-slate-700">拉吊</div>
+                                        <div class="text-sm font-black mt-0.5" :class="activeGameData.attack.drop > 0 ? 'text-orange-950' : 'text-slate-300'">{{ activeGameData.attack.drop }}</div>
+                                    </div>
+                                    <div @click="handleAttackClick('rush')" class="w-1/4 border-r border-slate-400 adaptive-py bg-orange-50/40 cursor-pointer active:bg-orange-200 flex flex-col justify-center px-1">
+                                        <div class="font-bold text-[10px] text-slate-700">突擊</div>
+                                        <div class="text-sm font-black mt-0.5" :class="activeGameData.attack.rush > 0 ? 'text-orange-950' : 'text-slate-300'">{{ activeGameData.attack.rush }}</div>
+                                    </div>
+                                    <div @click="handleAttackClick('counter')" class="w-1/4 border-r border-slate-400 adaptive-py bg-orange-50/40 cursor-pointer active:bg-orange-200 flex flex-col justify-center px-1">
+                                        <div class="font-bold text-[10px] text-slate-700">反擊</div>
+                                        <div class="text-sm font-black mt-0.5" :class="activeGameData.attack.counter > 0 ? 'text-orange-950' : 'text-slate-300'">{{ activeGameData.attack.counter }}</div>
+                                    </div>
+                                    <div @click="handleAttackClick('smash')" class="w-1/4 adaptive-py bg-orange-50/40 cursor-pointer active:bg-orange-200 flex flex-col justify-center px-1">
+                                        <div class="font-bold text-[10px] text-slate-700">強攻</div>
+                                        <div class="text-sm font-black mt-0.5" :class="activeGameData.attack.smash > 0 ? 'text-orange-950' : 'text-slate-300'">{{ activeGameData.attack.smash }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                        </template>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 底部固定控制面板 -->
+        <footer class="fixed bottom-0 left-0 right-0 bg-yellow-300 border-t border-slate-400 shadow-lg p-1.5 flex justify-around items-center w-full z-50 text-[11px] font-bold">
+            <button @click="currentMode = 'add'" class="flex-1 py-1.5 mx-0.5 rounded border border-slate-700 transition-all active:scale-95" :class="currentMode === 'add' ? 'bg-slate-800 text-white shadow' : 'bg-yellow-50 text-slate-800'">
+                增加 (➕)
+            </button>
+            <button @click="currentMode = 'sub'" class="flex-1 py-1.5 mx-0.5 rounded border border-slate-700 transition-all active:scale-95" :class="currentMode === 'sub' ? 'bg-slate-800 text-white shadow' : 'bg-yellow-50 text-slate-800'">
+                減少 (➖)
+            </button>
+            <button @click="currentMode = 'edit'" class="flex-1 py-1.5 mx-0.5 rounded border border-slate-700 transition-all active:scale-95" :class="currentMode === 'edit' ? 'bg-slate-800 text-white shadow' : 'bg-yellow-50 text-slate-800'">
+                修改 (✏️)
+            </button>
+            <button @click="clearData" class="px-3 py-1.5 mx-0.5 bg-red-600 text-white rounded border border-red-800 transition-all active:scale-95">
+                清空 (🧹)
+            </button>
+            <button @click="exportToCSV" class="px-3 py-1.5 mx-0.5 bg-slate-900 text-white rounded border border-black transition-all active:scale-95">
+                導出 (💾)
+            </button>
+        </footer>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed } = Vue;
+
+        createApp({
+            setup() {
+                const matchInfo = ref({
+                    date: new Date().toISOString().slice(0, 10),
+                    playerA: '', playerB: ''
+                });
+
+                const currentGame = ref(0);
+                const currentMode = ref('add');
+
+                const modeText = computed(() => {
+                    if (currentMode.value === 'add') return '增加(+1)';
+                    if (currentMode.value === 'sub') return '減少(-1)';
+                    return '手動輸入';
+                });
+
+                const unforcedItems = ['發球', '放網', '挑球', '勾對角', '推撲', '抽擋', '吊球', '殺球', '高遠球', '反手擊球'];
+                const forcedItems = ['放網', '挑球', '接殺', '反手過渡', '抽球', '吊球', '高遠球', '被反擊'];
+
+                const createEmptyGameStructure = () => {
+                    const structure = {
+                        rally: {
+                            p5: { score: 0, lose: 0 },
+                            p10: { score: 0, lose: 0 },
+                            p15: { score: 0, lose: 0 },
+                            p15plus: { score: 0, lose: 0 }
+                        },
+                        unforced: {},
+                        forced: {},
+                        foulCount: 0,
+                        attack: { drop: 0, counter: 0, rush: 0, smash: 0 }
+                    };
+                    unforcedItems.forEach(item => structure.unforced[item] = { out: 0, net: 0 });
+                    forcedItems.forEach(item => structure.forced[item] = { touch: 0, miss: 0, fool: 0 });
+                    return structure;
+                };
+
+                const gamesData = ref([createEmptyGameStructure(), createEmptyGameStructure(), createEmptyGameStructure()]);
+                const activeGameData = computed(() => gamesData.value[currentGame.value]);
+
+                const totalUnforced = computed(() => {
+                    let sum = activeGameData.value.foulCount;
+                    Object.values(activeGameData.value.unforced).forEach(cell => { sum += (cell.out + cell.net); });
+                    return sum;
+                });
+
+                const totalForced = computed(() => {
+                    let sum = 0;
+                    Object.values(activeGameData.value.forced).forEach(cell => { sum += (cell.touch + cell.miss + cell.fool); });
+                    return sum;
+                });
+
+                const totalAttack = computed(() => {
+                    const atk = activeGameData.value.attack;
+                    return atk.drop + atk.counter + atk.rush + atk.smash;
+                });
+
+                const getGameScoreValues = (index) => {
+                    const g = gamesData.value[index];
+                    const usScore = g.attack.drop + g.attack.counter + g.attack.rush + g.attack.smash;
+                    let themScore = g.foulCount;
+                    Object.values(g.unforced).forEach(cell => { themScore += (cell.out + cell.net); });
+                    Object.values(g.forced).forEach(cell => { themScore += (cell.touch + cell.miss + cell.fool); });
+                    return { us: usScore, them: themScore };
+                };
+
+                const updateValue = (targetObj, key, label = '') => {
+                    if (currentMode.value === 'add') {
+                        targetObj[key]++;
+                    } else if (currentMode.value === 'sub') {
+                        if (targetObj[key] > 0) targetObj[key]--;
+                    } else if (currentMode.value === 'edit') {
+                        const val = prompt(`直接修改【${label}】的數值:`, targetObj[key]);
+                        if (val !== null && !isNaN(val) && val.trim() !== '') {
+                            const parsed = parseInt(val, 10);
+                            targetObj[key] = parsed >= 0 ? parsed : 0;
+                        }
+                    }
+                };
+
+                const handleRallyClick = (pattern, side) => {
+                    const labelMap = { p5: '5拍以下', p10: '6-10拍', p15: '11-15拍', p15plus: '15拍以上' };
+                    const sideMap = { score: '得分', lose: '失分' };
+                    updateValue(activeGameData.value.rally[pattern], side, `${labelMap[pattern]}-${sideMap[side]}`);
+                };
+
+                const handleDiagnosticClick = (type, itemName, prop) => {
+                    const propLabels = { out: '出界', net: '不過', touch: '未過', miss: '不及', fool: '判斷' };
+                    updateValue(activeGameData.value[type][itemName], prop, `${itemName}-${propLabels[prop]}`);
+                };
+
+                const handleFoulClick = () => { updateValue(activeGameData.value, 'foulCount', '違例'); };
+                const handleAttackClick = (type) => {
+                    const typeLabels = { drop: '拉吊', counter: '反擊', rush: '突擊', smash: '強攻' };
+                    updateValue(activeGameData.value.attack, type, typeLabels[type]);
+                };
+
+                const clearData = () => {
+                    if (confirm("確認清空所有局數數據？")) {
+                        gamesData.value = [createEmptyGameStructure(), createEmptyGameStructure(), createEmptyGameStructure()];
+                    }
+                };
+
+                const exportToCSV = () => {
+                    let csv = "\uFEFF"; 
+                    csv += `羽球臨場統計表,日期:${matchInfo.value.date},選手A:${matchInfo.value.playerA},選手B:${matchInfo.value.playerB}\n`;
+                    const s1 = getGameScoreValues(0); const s2 = getGameScoreValues(1); const s3 = getGameScoreValues(2);
+                    csv += `局分統計,第一局:${s1.us}-${s1.them},第二局:${s2.us}-${s2.them},第三局:${s3.us}-${s3.them}\n\n`;
+
+                    gamesData.value.forEach((gData, index) => {
+                        const s = getGameScoreValues(index);
+                        csv += `--- 第 ${index + 1} 局 (比分: ${s.us}-${s.them}) ---\n`;
+                        csv += `多拍能力,5拍以下:${gData.rally.p5.score}/${gData.rally.p5.lose},6-10拍:${gData.rally.p10.score}/${gData.rally.p10.lose},11-15拍:${gData.rally.p15.score}/${gData.rally.p15.lose},15拍以上:${gData.rally.p15plus.score}/${gData.rally.p15plus.lose}\n`;
+                        csv += `非受迫性失誤,出界,不過網\n`;
+                        unforcedItems.forEach(item => { csv += `${item},${gData.unforced[item].out},${gData.unforced[item].net}\n`; });
+                        csv += `違例擊球,${gData.foulCount}\n`;
+                        csv += `受破性失誤,接到未過,到位不及,判斷失誤\n`;
+                        forcedItems.forEach(item => { csv += `${item},${gData.forced[item].touch},${gData.forced[item].miss},${gData.forced[item].fool}\n`; });
+                        csv += `進攻面板,拉吊,突擊,反擊,強攻\n`;
+                        csv += `,${gData.attack.drop},${gData.attack.rush},${gData.attack.counter},${gData.attack.smash}\n\n`;
+                    });
+
+                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement("a");
+                    link.href = URL.createObjectURL(blob);
+                    link.setAttribute("download", `羽球統計_${matchInfo.value.playerA}_${matchInfo.value.date}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                };
+
+                return {
+                    matchInfo, currentGame, currentMode, modeText,
+                    unforcedItems, forcedItems, activeGameData,
+                    totalUnforced, totalForced, totalAttack, getGameScoreValues,
+                    handleRallyClick, handleDiagnosticClick, handleFoulClick, handleAttackClick,
+                    clearData, exportToCSV
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
