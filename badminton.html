@@ -3,117 +3,355 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>羽球臨場統計表 (自適應通用版)</title>
+    <title>羽球臨場統計表 (自適應模塊化版)</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <style>
+        /* ==========================================================================
+           【全域與各模塊參數自訂區】
+           您只需要在此處修改數值，即可完美控制各個區塊的字體大小與顏色！
+           ========================================================================== */
         :root {
-            --primary-yellow: #FFDE4D;
-            --dark-blue: #1E3A8A;
-            --light-blue: #93C5FD;
-            --light-green: #86EFAC;
-            --skin-color: #F5C2A2;
-            --orange-badge: #FB923C;
-            --disabled-gray: #E5E7EB;
+            /* --- 1. 全域樣式與邊框 --- */
+            --border-color: #000000;       /* 邊框顏色 (預設黑色) */
+            --border-width: 1.5px;         /* 邊框粗細 */
+            --global-font-size: 11px;      /* 全域預設基礎字體大小 */
+
+            /* --- 2. 核心主題色彩 --- */
+            --primary-yellow: #FFDE4D;     /* 主題黃色 (頁首背景、控制按鈕等) */
+            --dark-blue: #1E3A8A;          /* 己方/藍色標題背景 */
+            --light-blue: #93C5FD;         /* 輔助藍色 */
+            --light-green: #86EFAC;        /* 輔助綠色 */
+            --skin-color: #F5C2A2;         /* 拍數欄位膚色背景 */
+            --orange-badge: #FB923C;       /* 橘色統計徽章背景 */
+            --disabled-gray: #E5E7EB;      /* 禁用單元格灰色背景 */
+
+            /* --- 3. 頂部頁首區 (Top Banner) 字體 --- */
+            --header-font-size: 12px;      /* 頁首文字與選手輸入框字體大小 */
+            --header-date-size: 11px;      /* 📅 日期文字大小 (專為安卓優化，防截斷) */
+
+            /* --- 4. 左上：局數切換面板 (Game Board) 字體與數字 --- */
+            --game-label-size: 12px;       /* 「第一局、第二局、局數」等文字大小 */
+            --game-score-size: 20px;       /* ⚡ 藍色與紅色「即時比分數字」大小 ⚡ */
+
+            /* --- 5. 右上：多拍面板 (Rally Board) 字體與數字 --- */
+            --rally-header-size: 12px;     /* 表格首行（拉吊、突擊等標題）字體大小 */
+            --rally-label-size: 12px;      /* 左側「5↓、6-10...」拍數標籤字體大小 */
+            --rally-score-size: 14px;      /* ⚡ 多拍得分與黃色失分「數據數字」大小 ⚡ */
+
+            /* --- 6. 下方：診斷失誤面板 (Error Board) 字體與數字 --- */
+            --error-header-size: 10px;     /* 「非受迫性失誤、打出界、打下網」等標題字體大小 */
+            --error-label-size: 10.5px;    /* 左側技術動作「發球、放網、挑球...」字體大小 */
+            --error-score-size: 12px;      /* ⚡ 失誤表格內部的「數據數字」大小 ⚡ */
+
+            /* --- 7. 下方：被反擊獨立面板 (Counter Board) 字體與數字 --- */
+            --counter-label-size: 10.5px;  /* 「被反擊、球速太慢、弧度不夠...」標籤字體大小 */
+            --counter-score-size: 11px;    /* ⚡ 被反擊括號內「數據數字」大小 ⚡ */
+
+            /* --- 8. 底部控制與提示欄 (Footer Control) 字體 --- */
+            --footer-hint-size: 11px;      /* 黑色提示列字體大小 */
+            --footer-btn-size: 12px;       /* 底部控制按鈕（+1模式、導出、重置）字體大小 */
         }
 
-        /* 恢復自然滾動，不鎖死屏幕 */
+        /* ==========================================================================
+           【系統底層配置 (不建議輕易變動)】
+           ========================================================================== */
         html, body {
-            margin: 0; padding: 0; width: 100%; min-height: 100%;
+            margin: 0; padding: 0; width: 100%; height: 100%;
             background-color: #F9FAFB;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
         }
 
-        /* 內容容器由內容自然撐開高度，拒絕 100vh 截斷 */
+        /* 主彈性容器 */
         .main-container {
-            display: flex; flex-direction: column;
-            width: 100%; box-sizing: border-box; padding: 4px; gap: 4px;
+            display: flex; 
+            flex-direction: column;
+            width: 100%; 
+            height: 100%;
+            box-sizing: border-box; 
+            padding: 4px; 
+            gap: 4px;     
         }
 
-        /* 頂部功能列：移除導出按鈕，優化間距 */
+        /* ==========================================
+           【1. 頁首區塊 (Top Banner)】
+           ========================================== */
         .top-banner {
+            flex-shrink: 0; 
             background-color: var(--primary-yellow);
-            border: 1.5px solid #000; padding: 4px 8px;
-            display: flex; justify-content: space-between; align-items: center;
-            font-weight: bold; font-size: 12px; border-radius: 4px;
+            border: var(--border-width) solid var(--border-color); 
+            padding: 4px 8px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            font-weight: bold; 
+            font-size: var(--header-font-size);
+            border-radius: 4px;
         }
+
+        /* 📅 安卓相容日期輸入框 */
+        .date-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .date-picker-wrapper input[type="date"] {
+            border: none; 
+            background: transparent; 
+            font-weight: bold; 
+            font-size: var(--header-date-size);
+            font-family: inherit;
+            color: #000000;
+            padding: 0;
+            margin: 0;
+            min-width: 95px; 
+            width: auto;
+            cursor: pointer;
+            outline: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        .date-picker-wrapper input[type="date"]::-webkit-clear-button { display: none; }
+        .date-picker-wrapper input[type="date"]::-webkit-inner-spin-button { display: none; }
+        .date-picker-wrapper input[type="date"]::-webkit-calendar-picker-indicator {
+            margin-left: 2px;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        /* 選手名字輸入框 */
         .player-inputs input {
-            border: none; border-bottom: 1px solid #000; background: transparent;
-            text-align: center; font-weight: bold; width: 75px; font-size: 12px;
+            border: none; 
+            border-bottom: 1px solid #000; 
+            background: transparent;
+            text-align: center; 
+            font-weight: bold; 
+            width: 75px; 
+            font-size: var(--header-font-size);
         }
         .player-inputs input:focus { outline: none; }
 
-        /* 上部工作區 */
-        .workspace-top {
-            display: flex; gap: 4px; width: 100%;
+        /* ==========================================
+           【自適應工作區與比例分配】
+           ========================================== */
+        .workspace-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-height: 0; 
         }
-        .score-switch-panel { width: 32%; border: 1.5px solid #000; background: #FFF; }
-        .right-panel { width: 68%; border: 1.5px solid #000; background: #FFF; }
 
-        /* 表格通用樣式 */
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        th, td { border: 1.5px solid #000; text-align: center; vertical-align: middle; font-weight: bold; font-size: 11px; padding: 3px 1px; }
+        /* --- 【上部工作區】比例佔 1 --- */
+        .workspace-top {
+            flex: 1; 
+            display: flex; 
+            gap: 4px; 
+            width: 100%;
+            min-height: 0;
+        }
+        
+        /* ==========================================
+           【2. 左上：局數切換面板 (Game Board)】
+           ========================================== */
+        .score-switch-panel { 
+            width: 32%; 
+            border: var(--border-width) solid var(--border-color); 
+            background: #FFF;
+            height: 100%;
+            overflow-y: auto; 
+        }
+        .score-switch-panel td {
+            font-size: var(--game-label-size); /* 局數面板文字大小 */
+        }
+        /* ⚡ 局數面板專屬比分數字樣式 ⚡ */
+        .score-switch-panel .score-num-blue {
+            color: blue;
+            font-weight: bold;
+            font-size: var(--game-score-size);
+        }
+        .score-switch-panel .score-num-red {
+            color: red;
+            font-weight: bold;
+            font-size: var(--game-score-size);
+        }
+
+        /* ==========================================
+           【3. 右上：多拍面板 (Rally Board)】
+           ========================================== */
+        .right-panel { 
+            width: 68%; 
+            border: var(--border-width) solid var(--border-color); 
+            background: #FFF;
+            height: 100%;
+            overflow-y: auto; 
+        }
+        /* 表頭 row 高度與字體 */
+        .rally-header-row td {
+            font-size: var(--rally-header-size);
+        }
+        /* 左側拍數標籤列 */
+        .rally-label-cell {
+            font-size: var(--rally-label-size) !important;
+        }
+        /* ⚡ 多拍面板內部得分/失分數字 ⚡ */
+        .rally-score-cell {
+            font-size: var(--rally-score-size) !important;
+        }
+
+        /* --- 【下部工作區】比例佔 2 --- */
+        .workspace-bottom {
+            flex: 2; 
+            display: flex; 
+            flex-direction: column; 
+            border: var(--border-width) solid var(--border-color); 
+            background: #FFF; 
+            min-height: 0;
+        }
+        
+        /* 診斷區表格外層 */
+        .matrix-scroll-wrapper {
+            width: 100%;
+            flex: 1;
+            overflow-y: auto; 
+        }
+
+        /* ==========================================
+           【4. 下方：診斷失誤面板 (Error Board)】
+           ========================================== */
+        .error-header-row td {
+            font-size: var(--error-header-size);
+        }
+        .error-label-cell {
+            font-size: var(--error-label-size) !important;
+        }
+        /* ⚡ 失誤面板內數據數字 ⚡ */
+        .error-score-cell {
+            font-size: var(--error-score-size) !important;
+        }
+
+        /* ==========================================
+           【5. 下方：被反擊獨立面板 (Counter Board)】
+           ========================================== */
+        .countered-panel {
+            background: #F0F9FF; 
+            border-top: var(--border-width) solid var(--border-color);
+            flex-shrink: 0; 
+        }
+        .counter-label-cell {
+            font-size: var(--counter-label-size) !important;
+        }
+        /* ⚡ 被反擊數據數字 ⚡ */
+        .counter-score-num {
+            font-size: var(--counter-score-size);
+        }
+
+        /* ==========================================
+           【表格通用樣式與單元格色彩】
+           ========================================== */
+        table { 
+            width: 100%; 
+            height: 100%; 
+            border-collapse: collapse; 
+            table-layout: fixed; 
+        }
+        th, td { 
+            border: var(--border-width) solid var(--border-color); 
+            text-align: center; 
+            vertical-align: middle; 
+            font-weight: bold; 
+            font-size: var(--global-font-size); /* 預設繼承全域字體 */
+            padding: 2px 1px; 
+        }
         
         .clickable { cursor: pointer; user-select: none; }
         .clickable:active { opacity: 0.6; }
 
-        /* 顏色矩陣 */
-        .bg-dark-blue { background-color: #2563EB; color: #FFF; }
-        .bg-dark-red { background-color: #DC2626; color: #FFF; }
-        .bg-skin { background-color: var(--skin-color); color: #000; }
-        .bg-yellow { background-color: var(--primary-yellow); color: #000; }
-        .white-cell { background-color: #FFF; font-weight: normal; font-size: 12px; }
+        .bg-dark-blue { background-color: #2563EB; color: #FFF; }   
+        .bg-dark-red  { background-color: #DC2626; color: #FFF; }   
+        .bg-skin      { background-color: var(--skin-color); color: #000; } 
+        .bg-yellow    { background-color: var(--primary-yellow); color: #000; } 
+        .white-cell   { background-color: #FFF; font-weight: normal; } 
         
-        /* 禁用單元格樣式 */
-        .disabled-cell { background-color: var(--disabled-gray); color: #9CA3AF; cursor: not-allowed; font-weight: normal; }
+        .disabled-cell { 
+            background-color: var(--disabled-gray); 
+            color: #9CA3AF; 
+            cursor: not-allowed; 
+            font-weight: normal; 
+        }
 
+        /* A、B總數小徽章 */
         .badge {
-            background: var(--orange-badge); color: #FFF; font-size: 9px; 
-            padding: 0px 2px; border-radius: 3px; font-weight: normal; display: inline-block;
-        }
-
-        /* 徹底解決留白的關鍵：移除 flex:1 與 overflow，讓容器由大表格自然撐大 */
-        .workspace-bottom {
-            display: flex; flex-direction: column; border: 1.5px solid #000; background: #FFF; 
-        }
-        
-        .matrix-scroll-wrapper {
-            width: 100%;
+            background: var(--orange-badge); 
+            color: #FFF; 
+            font-size: 9px; 
+            padding: 0px 2px; 
+            border-radius: 3px; 
+            font-weight: normal; 
+            display: inline-block;
         }
 
         /* 內嵌式違例按鈕 */
         .inline-fault-btn {
-            background: #EF4444; color: white; border: 1px solid #000; border-radius: 3px;
-            padding: 1px 2px; font-size: 10px; font-weight: bold; cursor: pointer;
-            margin-top: 2px; display: inline-block; width: 92%; box-sizing: border-box;
+            background: #EF4444; 
+            color: white; 
+            border: 1px solid #000; 
+            border-radius: 3px;
+            padding: 1px 2px; 
+            font-size: 10px; 
+            font-weight: bold; 
+            cursor: pointer;
+            margin-top: 2px; 
+            display: inline-block; 
+            width: 92%; 
+            box-sizing: border-box;
         }
         .inline-fault-btn:active { background: #DC2626; }
         .fault-count-tag { color: #FFF; font-weight: bold; background: rgba(0,0,0,0.2); padding: 0 2px; border-radius: 2px; }
 
-        /* 被反擊獨立面板：緊貼主表格下方，絕無空隙 */
-        .countered-panel {
-            background: #F0F9FF; border-top: 1.5px solid #000;
-        }
-
-        /* 狀態提示與動畫 */
+        /* 鎖定等待原因時的動畫閃爍 */
         .waiting-pulse-add { animation: pulse-add 0.8s infinite; background-color: #EF4444 !important; color: #FFF !important; }
         .waiting-pulse-sub { animation: pulse-sub 0.8s infinite; background-color: #3B82F6 !important; color: #FFF !important; }
         @keyframes pulse-add { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
         @keyframes pulse-sub { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 
-        /* 底部控制列與提示列：緊跟在內容下方，可隨頁面滑動點擊 */
+        /* ==========================================
+           【6. 頁尾控制與提示區】
+           ========================================== */
         .footer-hint-bar {
-            background: #000; color: #FFF; text-align: center; font-size: 11px; height: 22px; line-height: 22px; font-weight: bold; margin-top: 4px;
+            flex-shrink: 0; 
+            background: #000; 
+            color: #FFF; 
+            text-align: center; 
+            font-size: var(--footer-hint-size); 
+            height: 22px; 
+            line-height: 22px; 
+            font-weight: bold; 
         }
         .footer-control-bar {
-            height: 40px; display: flex; gap: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom));
+            flex-shrink: 0; 
+            height: 40px; 
+            display: flex; 
+            gap: 4px; 
+            padding-bottom: calc(4px + env(safe-area-inset-bottom)); 
         }
         .control-btn {
-            flex: 1; border: 1.5px solid #000; background: var(--primary-yellow);
-            display: flex; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 12px; cursor: pointer; border-radius: 4px; text-align: center;
+            flex: 1; 
+            border: var(--border-width) solid var(--border-color); 
+            background: var(--primary-yellow);
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            font-weight: bold; 
+            font-size: var(--footer-btn-size); 
+            cursor: pointer; 
+            border-radius: 4px; 
+            text-align: center;
         }
         .control-btn.active {
-            background: #000 !important; color: var(--primary-yellow) !important;
+            background: #000 !important; 
+            color: var(--primary-yellow) !important;
         }
     </style>
 </head>
@@ -122,7 +360,9 @@
 <div id="app" class="main-container">
     
     <div class="top-banner">
-        <div>📅 <input type="date" v-model="matchInfo.date" style="border:none; background:transparent; font-weight:bold; font-size:11px; width:85px;"></div>
+        <div class="date-picker-wrapper">
+            📅 <input type="date" v-model="matchInfo.date">
+        </div>
         <div class="player-inputs">
             <input type="text" v-model="matchInfo.playerA" placeholder="選手A">
             <span>VS</span>
@@ -130,114 +370,118 @@
         </div>
     </div>
 
-    <div class="workspace-top">
-        <div class="score-switch-panel">
-            <table>
-                <tr style="height: 18px; background: #1F2937; color: #FFF; font-size: 10px;">
-                    <td style="width: 40%;">局數</td>
-                    <td class="bg-dark-blue" style="font-size: 9px;">已方</td>
-                    <td class="bg-dark-red" style="font-size: 9px;">對方</td>
-                </tr>
-                <tr v-for="g in [1,2,3]" :key="g" style="height: 22px;">
-                    <td class="clickable" :class="{'bg-yellow': currentGame === g}" @click="switchGame(g)">第{{g === 1 ? '一' : g === 2 ? '二' : '三'}}局</td>
-                    <td class="white-cell" style="color: blue; font-weight: bold;">{{ gameScores['g'+g].win }}</td>
-                    <td class="white-cell" style="color: red; font-weight: bold;">{{ gameScores['g'+g].loss }}</td>
-                </tr>
-            </table>
+    <div class="workspace-container">
+        
+        <div class="workspace-top">
+            <div class="score-switch-panel">
+                <table>
+                    <tr style="height: 18px; background: #1F2937; color: #FFF;">
+                        <td style="width: 40%;">局數</td>
+                        <td class="bg-dark-blue">已方</td>
+                        <td class="bg-dark-red">對方</td>
+                    </tr>
+                    <tr v-for="g in [1,2,3]" :key="g" style="height: 22px;">
+                        <td class="clickable" :class="{'bg-yellow': currentGame === g}" @click="switchGame(g)">第{{g === 1 ? '一' : g === 2 ? '二' : '三'}}局</td>
+                        <td class="white-cell score-num-blue">{{ gameScores['g'+g].win }}</td>
+                        <td class="white-cell score-num-red">{{ gameScores['g'+g].loss }}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="right-panel">
+                <table>
+                    <tr class="bg-skin rally-header-row" style="height: 18px;">
+                        <td style="width: 16%;">拍數</td>
+                        <td>拉吊</td>
+                        <td>突擊</td>
+                        <td>反擊</td>
+                        <td>強攻</td>
+                        <td>送分</td>
+                        <td class="bg-yellow" style="width: 16%;">失分</td>
+                    </tr>
+                    <tr v-for="rally in rallies" :key="rally.key" style="height: 22px;">
+                        <td class="bg-skin rally-label-cell">{{ rally.label }}</td>
+                        <td class="white-cell clickable rally-score-cell" @click="handleScore(rally.key, 'pull_score')">{{ rallyData[rally.key].pull_score }}</td>
+                        <td class="white-cell clickable rally-score-cell" @click="handleScore(rally.key, 'rush_score')">{{ rallyData[rally.key].rush_score }}</td>
+                        <td class="white-cell clickable rally-score-cell" @click="handleScore(rally.key, 'counter_score')">{{ rallyData[rally.key].counter_score }}</td>
+                        <td class="white-cell clickable rally-score-cell" @click="handleScore(rally.key, 'attack_score')">{{ rallyData[rally.key].attack_score }}</td>
+                        <td class="white-cell clickable rally-score-cell" @click="handleScore(rally.key, 'opponent_give')">{{ rallyData[rally.key].opponent_give }}</td>
+                        
+                        <td class="bg-yellow clickable rally-score-cell" 
+                            :class="{
+                                'waiting-pulse-add': waitingForReason && waitingRallyKey === rally.key && opMode === 'add',
+                                'waiting-pulse-sub': waitingForReason && waitingRallyKey === rally.key && opMode === 'sub'
+                            }"
+                            @click="triggerLoss(rallyKey = rally.key)">
+                            {{ rallyData[rally.key].loss }}
+                        </td>
+                    </tr>
+                </table>
+            </div>
         </div>
 
-        <div class="right-panel">
-            <table>
-                <tr class="bg-skin" style="height: 18px; font-size: 10px;">
-                    <td style="width: 16%;">拍數</td>
-                    <td>拉吊</td>
-                    <td>突擊</td>
-                    <td>反擊</td>
-                    <td>強攻</td>
-                    <td>送分</td>
-                    <td class="bg-yellow" style="width: 16%;">失分</td>
-                </tr>
-                <tr v-for="rally in rallies" :key="rally.key" style="height: 22px;">
-                    <td class="bg-skin" style="font-size: 10px;">{{ rally.label }}</td>
-                    <td class="white-cell clickable" @click="handleScore(rally.key, 'pull_score')">{{ rallyData[rally.key].pull_score }}</td>
-                    <td class="white-cell clickable" @click="handleScore(rally.key, 'rush_score')">{{ rallyData[rally.key].rush_score }}</td>
-                    <td class="white-cell clickable" @click="handleScore(rally.key, 'counter_score')">{{ rallyData[rally.key].counter_score }}</td>
-                    <td class="white-cell clickable" @click="handleScore(rally.key, 'attack_score')">{{ rallyData[rally.key].attack_score }}</td>
-                    <td class="white-cell clickable" @click="handleScore(rally.key, 'opponent_give')">{{ rallyData[rally.key].opponent_give }}</td>
-                    
-                    <td class="bg-yellow clickable" 
-                        :class="{
-                            'waiting-pulse-add': waitingForReason && waitingRallyKey === rally.key && opMode === 'add',
-                            'waiting-pulse-sub': waitingForReason && waitingRallyKey === rally.key && opMode === 'sub'
-                        }"
-                        @click="triggerLoss(rallyKey = rally.key)">
-                        {{ rallyData[rally.key].loss }}
-                    </td>
-                </tr>
-            </table>
-        </div>
-    </div>
+        <div class="workspace-bottom">
+            <div class="matrix-scroll-wrapper">
+                <table>
+                    <tr class="error-header-row" style="height: 24px;">
+                        <td rowspan="2" class="bg-yellow" style="width: 16%;">
+                            <div>類型</div>
+                            <button class="inline-fault-btn" @click="handleFaultClick">
+                                違例 <span class="fault-count-tag">{{ faultData.count }}</span>
+                            </button>
+                        </td>
+                        <td colspan="3" style="background-color: #38BDF8; color: #000;">
+                            非受迫性失誤 <span class="badge">{{ totalUnforced }}</span>
+                        </td>
+                        <td colspan="3" style="background-color: #34D399; color: #000;">
+                            受迫性失誤 <span class="badge">{{ totalForced }}</span>
+                        </td>
+                    </tr>
+                    <tr class="error-header-row" style="height: 24px; background-color: #F9FAFB;">
+                        <td style="width: 14%; background-color: #38BDF8;">打出界</td>
+                        <td style="width: 14%; background-color: #38BDF8;">打下網</td>
+                        <td style="width: 14%; background-color: #38BDF8;">判斷失誤</td>
+                        <td style="width: 14%; background-color: #34D399;">丟失重心</td>
+                        <td style="width: 14%; background-color: #34D399;">節奏不對</td>
+                        <td style="width: 14%; background-color: #34D399;">配速不對</td>
+                    </tr>
 
-    <div class="workspace-bottom">
-        <div class="matrix-scroll-wrapper">
-            <table>
-                <tr style="height: 24px;">
-                    <td rowspan="2" class="bg-yellow" style="width: 16%; font-size: 11px;">
-                        <div>類型</div>
-                        <button class="inline-fault-btn" @click="handleFaultClick">
-                            違例 <span class="fault-count-tag">{{ faultData.count }}</span>
-                        </button>
-                    </td>
-                    <td colspan="3" style="background-color: #38BDF8; color: #000; font-size: 10px;">
-                        非受迫性失誤 <span class="badge">{{ totalUnforced }}</span>
-                    </td>
-                    <td colspan="3" style="background-color: #34D399; color: #000; font-size: 10px;">
-                        受迫性失誤 <span class="badge">{{ totalForced }}</span>
-                    </td>
-                </tr>
-                <tr style="height: 24px; background-color: #F9FAFB;">
-                    <td style="width: 14%;">打出界</td>
-                    <td style="width: 14%;">打下網</td>
-                    <td style="width: 14%;">判斷失誤</td>
-                    <td style="width: 14%;">丟失重心</td>
-                    <td style="width: 14%;">節奏不對</td>
-                    <td style="width: 14%;">配速不對</td>
-                </tr>
+                    <tr v-for="tech in techRows" :key="tech.key" style="height: 22px;">
+                        <td class="bg-yellow error-label-cell">{{ tech.label }}</td>
+                        
+                        <td v-if="isCellAllowed(tech.key, 'unforced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'out')">{{ techData[tech.key].out }}</td>
+                        <td v-else class="disabled-cell">—</td>
 
-                <tr v-for="tech in techRows" :key="tech.key" style="height: 22px;">
-                    <td class="bg-yellow" style="font-size: 10.5px;">{{ tech.label }}</td>
-                    
-                    <td v-if="isCellAllowed(tech.key, 'unforced')" class="white-cell clickable" @click="handleReasonClick(tech.key, 'out')">{{ techData[tech.key].out }}</td>
-                    <td v-else class="disabled-cell">—</td>
+                        <td v-if="isCellAllowed(tech.key, 'unforced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'net')">{{ techData[tech.key].net }}</td>
+                        <td v-else class="disabled-cell">—</td>
 
-                    <td v-if="isCellAllowed(tech.key, 'unforced')" class="white-cell clickable" @click="handleReasonClick(tech.key, 'net')">{{ techData[tech.key].net }}</td>
-                    <td v-else class="disabled-cell">—</td>
+                        <td v-if="isCellAllowed(tech.key, 'unforced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'judge')">{{ techData[tech.key].judge }}</td>
+                        <td v-else class="disabled-cell">—</td>
 
-                    <td v-if="isCellAllowed(tech.key, 'unforced')" class="white-cell clickable" @click="handleReasonClick(tech.key, 'judge')">{{ techData[tech.key].judge }}</td>
-                    <td v-else class="disabled-cell">—</td>
+                        <td v-if="isCellAllowed(tech.key, 'forced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'balance')">{{ techData[tech.key].balance }}</td>
+                        <td v-else class="disabled-cell">—</td>
 
-                    <td v-if="isCellAllowed(tech.key, 'forced')" class="white-cell clickable" @click="handleReasonClick(tech.key, 'balance')">{{ techData[tech.key].balance }}</td>
-                    <td v-else class="disabled-cell">—</td>
+                        <td v-if="isCellAllowed(tech.key, 'forced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'rhythm')">{{ techData[tech.key].rhythm }}</td>
+                        <td v-else class="disabled-cell">—</td>
 
-                    <td v-if="isCellAllowed(tech.key, 'forced')" class="white-cell clickable" @click="handleReasonClick(tech.key, 'rhythm')">{{ techData[tech.key].rhythm }}</td>
-                    <td v-else class="disabled-cell">—</td>
+                        <td v-if="isCellAllowed(tech.key, 'forced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'speed')" :key="tech.key">{{ techData[tech.key].speed }}</td>
+                        <td v-else class="disabled-cell">—</td>
+                    </tr>
+                </table>
+            </div>
 
-                    <td v-if="isCellAllowed(tech.key, 'forced')" class="white-cell clickable" @click="handleReasonClick(tech.key, 'speed')" :key="tech.key">{{ techData[tech.key].speed }}</td>
-                    <td v-else class="disabled-cell">—</td>
-                </tr>
-            </table>
+            <div class="countered-panel">
+                <table>
+                    <tr style="height: 26px;">
+                        <td class="bg-yellow counter-label-cell" style="width: 16%;">被反擊</td>
+                        <td v-for="cType in counteredTypes" :key="cType.key" class="white-cell clickable counter-label-cell" @click="handleCounteredClick(cType.key)">
+                            {{ cType.label }} <span class="counter-score-num" style="color: #2563EB; font-weight: bold;">({{ counteredData[cType.key] }})</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
         </div>
 
-        <div class="countered-panel">
-            <table>
-                <tr style="height: 26px;">
-                    <td class="bg-yellow" style="width: 16%; font-size: 10.5px;">被反擊</td>
-                    <td v-for="cType in counteredTypes" :key="cType.key" class="white-cell clickable" style="font-size: 10px; font-weight: bold;" @click="handleCounteredClick(cType.key)">
-                        {{ cType.label }} <span style="color: #2563EB;">({{ counteredData[cType.key] }})</span>
-                    </td>
-                </tr>
-            </table>
-        </div>
     </div>
 
     <div class="footer-hint-bar">
