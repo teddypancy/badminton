@@ -1043,7 +1043,7 @@ new Vue({
                 const fl = this.gameData[g].fault || {};
                 csvContent += `違例失分,${fl.count || 0}\n\n`;
 
-                csvContent += `--- 第${g}局 臨場操作流水日誌 ---\n`;
+                csvContent += `--- 第${g}局 日誌 ---\n`;
                 csvContent += "紀錄時間,局數與拍數,操作內容,當前比分\n";
                 const logsForGame = this.actionLogs[g] || [];
                 logsForGame.forEach(log => {
