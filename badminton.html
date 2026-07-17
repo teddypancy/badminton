@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>羽球臨場統計表 v0.3.2</title>
+    <title>羽球臨場統計表 v0.3.3</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <style>
         /* ==========================================================================
@@ -515,13 +515,10 @@ new Vue({
         this.loadFromLocalStorage();
     },
     methods: {
-        // 🎯 核心過濾邏輯更新：新增發球與接發球只能在 5↓ 拍數被啟用的條件
         isCellAllowed(techKey, type) {
-            // 原有固定限制：發球/殺球沒有受迫性，接殺沒有非受迫性
             if ((techKey === 'serve' || techKey === 'smash') && type === 'forced') return false;
             if (techKey === 'block_smash' && type === 'unforced') return false;
             
-            // 新增限制：在正常登記模式下（有選定失分拍時），發球與接發球只能在 5↓ ('under5') 拍數中選擇
             if (this.waitingForReason && (techKey === 'serve' || techKey === 'receive')) {
                 if (this.waitingRallyKey !== 'under5') {
                     return false;
@@ -545,25 +542,29 @@ new Vue({
             }));
         },
 
+        // 優化：點擊撤銷時新增二次確認彈窗
         handleUndo() {
             if (this.undoStack.length === 0) {
                 alert("目前沒有更早的歷史操作紀錄可以撤銷。");
                 return;
             }
-            const snap = JSON.parse(this.undoStack.pop());
-            const previousState = snap.gameData;
             
-            [1, 2, 3].forEach(g => {
-                if (previousState[g]) {
-                    Object.assign(this.gameData[g].rally, previousState[g].rally);
-                    Object.assign(this.gameData[g].tech, previousState[g].tech);
-                    Object.assign(this.gameData[g].countered, previousState[g].countered);
-                    Object.assign(this.gameData[g].fault, previousState[g].fault);
-                }
-            });
-            
-            this.actionLogs = snap.logs;
-            this.waitingForReason = false;
+            if (confirm("確定要撤銷上一步操作嗎？")) {
+                const snap = JSON.parse(this.undoStack.pop());
+                const previousState = snap.gameData;
+                
+                [1, 2, 3].forEach(g => {
+                    if (previousState[g]) {
+                        Object.assign(this.gameData[g].rally, previousState[g].rally);
+                        Object.assign(this.gameData[g].tech, previousState[g].tech);
+                        Object.assign(this.gameData[g].countered, previousState[g].countered);
+                        Object.assign(this.gameData[g].fault, previousState[g].fault);
+                    }
+                });
+                
+                this.actionLogs = snap.logs;
+                this.waitingForReason = false;
+            }
         },
 
         getRealSystemTime() {
@@ -612,6 +613,7 @@ new Vue({
             }
         },
 
+        // 優化：點擊失分格時不主動彈出日誌視窗，只進行鎖定
         triggerLoss(rallyKey) {
             const rallyLabel = this.rallies.find(r => r.key === rallyKey).label;
             if (this.opMode === 'edit') {
@@ -625,7 +627,6 @@ new Vue({
             }
             this.waitingForReason = true;
             this.waitingRallyKey = rallyKey;
-            this.showLogWindow = true;
         },
 
         handleReasonClick(techKey, field) {
@@ -804,7 +805,7 @@ new Vue({
             let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             let link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.setAttribute("download", `羽球臨場統計v0.3.2_${this.matchInfo.date}.csv`);
+            link.setAttribute("download", `羽球臨場統計v0.3.3_${this.matchInfo.date}.csv`);
             document.body.appendChild(link); 
             link.click(); 
             document.body.removeChild(link);
