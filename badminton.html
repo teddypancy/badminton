@@ -347,7 +347,7 @@
                 <!-- 📜 嵌入式操作日誌視窗（已對應當前局數顯示獨立日誌） -->
                 <div v-if="showLogWindow" class="embedded-log-window">
                     <div class="embedded-log-header">
-                        <span>📜 第{{currentGame === 1 ? '一' : currentGame === 2 ? '二' : '三'}}局流水日誌</span>
+                        <span>📜 第{{currentGame === 1 ? '一' : currentGame === 2 ? '二' : '三'}}局日誌</span>
                         <span class="window-close" style="cursor:pointer; font-weight:bold;" @click="showLogWindow = false">×</span>
                     </div>
                     <div class="embedded-log-list" ref="logContainer">
