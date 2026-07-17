@@ -152,10 +152,28 @@
             color: #F87171; 
             font-weight: bold; 
             font-size: 11px; 
-            padding: 4px 8px;
+            padding: 4px 6px;
             text-align: center;
             line-height: 1.4;
             word-break: break-all;
+        }
+
+        /* 狀態指引內置按鈕樣式 */
+        .help-trigger-btn {
+            background-color: var(--primary-yellow);
+            color: #000000;
+            border: 1px solid #000000;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 6px;
+            cursor: pointer;
+            margin-bottom: 3px;
+            display: inline-block;
+            transition: background-color 0.1s;
+        }
+        .help-trigger-btn:active {
+            background-color: #E6C21F;
         }
 
         /* 非受迫性與受迫性分欄底色 */
@@ -252,6 +270,40 @@
         .double-cell-row:first-child {
             border-bottom: 1px dashed #A3A3A3;
         }
+
+        /* ==========================================================================
+           【核心操作說明彈窗（Modal）樣式】
+           ========================================================================== */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); z-index: 200;
+            display: flex; justify-content: center; align-items: center;
+            padding: 10px; box-sizing: border-box;
+        }
+        .modal-content {
+            background: #FFFFFF; border: 2px solid #000000; border-radius: 6px;
+            width: 100%; max-width: 480px; max-height: 85vh;
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            background: #1F2937; color: #FFFFFF; padding: 8px 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-weight: bold; font-size: 13px; flex-shrink: 0;
+        }
+        .modal-close-btn {
+            background: none; border: none; color: #FFF; font-size: 18px;
+            font-weight: bold; cursor: pointer; padding: 0; line-height: 1;
+        }
+        .modal-body {
+            flex: 1; overflow-y: auto; padding: 12px; font-size: 11px;
+            line-height: 1.5; color: #374151; -webkit-overflow-scrolling: touch;
+        }
+        .modal-body h4 { margin: 8px 0 4px 0; color: #111827; font-size: 11.5px; border-left: 3px solid var(--orange-badge); padding-left: 5px; }
+        .modal-body h4:first-child { margin-top: 0; }
+        .modal-body ul { margin: 0 0 8px 0; padding-left: 16px; }
+        .modal-body li { margin-bottom: 3px; }
+        .modal-body strong { color: #000; }
     </style>
 </head>
 <body>
@@ -425,11 +477,11 @@
                         </td>
                     </tr>
 
-                    <!-- 3. 被反擊（6 個完全獨立的單元格，各自對應不同的失分原因，點擊直接登記，不再彈窗） -->
+                    <!-- 3. 被反擊 -->
                     <tr style="height: 48px;">
                         <td class="bg-skin error-label-cell">被反擊</td>
                         
-                        <!-- 雙層第一欄：球速太慢（上）與 時機不對（下），各自擁有獨立 clickable 屬性與 click 事件 -->
+                        <!-- 雙層第一欄 -->
                         <td class="unforced-cell" style="padding: 0;">
                             <div class="double-cell-container">
                                 <div class="double-cell-row clickable" @click="handleCounteredDirectClick('speed_slow')">
@@ -441,7 +493,7 @@
                             </div>
                         </td>
                         
-                        <!-- 雙層第二欄：弧度不夠（上）與 球路不對（下），各自擁有獨立 clickable 屬性與 click 事件 -->
+                        <!-- 雙層第二欄 -->
                         <td class="unforced-cell" style="padding: 0;">
                             <div class="double-cell-container">
                                 <div class="double-cell-row clickable" @click="handleCounteredDirectClick('arc_low')">
@@ -453,7 +505,7 @@
                             </div>
                         </td>
                         
-                        <!-- 雙層第三欄：質量太差（上）與 其他（下），各自擁有獨立 clickable 屬性與 click 事件 -->
+                        <!-- 雙層第三欄 -->
                         <td class="unforced-cell" style="padding: 0;">
                             <div class="double-cell-container">
                                 <div class="double-cell-row clickable" @click="handleCounteredDirectClick('quality_poor')">
@@ -465,13 +517,54 @@
                             </div>
                         </td>
                         
-                        <!-- 狀態說明合併格（顯示動態提示文字） -->
+                        <!-- 狀態說明合併格（點擊標題按鈕觸開操作說明彈窗） -->
                         <td colspan="3" class="status-cell">
-                            <div style="color: #FCD34D;">【狀態與操作指引】</div>
-                            <div style="color: #FFF; font-size: 10px; margin-top: 2px;">{{ statusTip }}</div>
+                            <button type="button" class="help-trigger-btn" @click="showHelpModal = true">【💡 點擊查看操作指南】</button>
+                            <div style="color: #FFF; font-size: 10px;">{{ statusTip }}</div>
                         </td>
                     </tr>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 💡 核心操作指南彈窗（Modal Component） -->
+    <div v-if="showHelpModal" class="modal-overlay" @click.self="showHelpModal = false">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>🏸 羽球臨場統計表 v0.5 核心操作指南</span>
+                <button type="button" class="modal-close-btn" @click="showHelpModal = false">×</button>
+            </div>
+            <div class="modal-body">
+                <h4>📌 1. 基礎架構：局數獨立管理</h4>
+                <ul>
+                    <li><strong>獨立儲存</strong>：切換第一/二/三局時，數據與流水日誌會自動同步切換。</li>
+                    <li><strong>精準重置</strong>：點擊「清空數據」僅清除當前局的統計與該局日誌，不影響他局。</li>
+                </ul>
+
+                <h4>🎯 2. 我方主動得分（+1 模式）</h4>
+                <ul>
+                    <li><strong>操作</strong>：直接點擊右上角多拍面板的得分格（拉吊、突擊等）。</li>
+                    <li><strong>邏輯</strong>：記錄我方得分時的<strong>拍數區間</strong>與**技術路徑**，己方比分自動 +1。</li>
+                </ul>
+
+                <h4>⚠️ 3. 我方失分診斷（核心二階段鎖定）</h4>
+                <p style="margin: 0 0 4px 4px; font-weight: bold; color: #DC2626;">必須先點擊黃色「失分」格鎖定拍數（格子閃爍），再於下方選擇失誤成因：</p>
+                <ul>
+                    <li><strong>非受迫性失誤（我方控制失誤）</strong>：歸因於我方自身技術的失控。項目：打出界、打下網、判斷失誤。</li>
+                    <li><strong>受迫性失誤（依對手球種與施壓統計）</strong>：評估我方在<strong>對手不同球種與戰術施壓下</strong>的抗壓防守能力。
+                        <ul>
+                            <li><strong>常規技術/反手後場</strong>：統計當面對對手的壓迫，導致我方出現丟失重心、節奏/配速不對，或反手遭被調動、被快壓的被動狀態。</li>
+                            <li><strong>被反擊模組</strong>：完全依據<strong>對手的反擊球種質量</strong>進行統計（如對手反擊導致我方球速太慢、時機不對、弧度不夠、球路不對、質量太差）。</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h4>🛠️ 4. 數據修正與日誌分流</h4>
+                <ul>
+                    <li><strong>+1 模式</strong>：正常登記，流水日誌套用標準格式 `[時間](拍數)操作[比分]`。</li>
+                    <li><strong>-1 / 改數值模式</strong>：用於修正錯誤。日誌會分流為直觀的修正文字（如：`（6-10 突擊得分 -1）`），撤銷功能會同步回溯該局日誌。</li>
+                </ul>
             </div>
         </div>
     </div>
@@ -502,7 +595,7 @@
 </div>
 
 <script>
-const STORAGE_KEY = 'badminton_stat_sheet_v4_2';
+const STORAGE_KEY = 'badminton_stat_sheet_v5_0';
 
 new Vue({
     el: '#app',
@@ -515,7 +608,8 @@ new Vue({
             matchInfo: { date: new Date().toISOString().split('T')[0], playerA: '', playerB: '' },
             
             showLogWindow: false,
-            // 獨立的局數日誌結構
+            showHelpModal: false, // 控制操作說明指南彈窗的顯示狀態
+            
             actionLogs: {
                 1: [],
                 2: [],
@@ -540,7 +634,6 @@ new Vue({
                 { key: 'smash', label: '殺球' },
                 { key: 'clear', label: '高遠球' }
             ],
-            // 被反擊 6 種原因的名稱映射
             counteredMap: {
                 speed_slow: '球速太慢',
                 timing_bad: '時機不對',
@@ -567,52 +660,41 @@ new Vue({
         backhandData() { return this.gameData[this.currentGame].backhand; },
         counteredData() { return this.gameData[this.currentGame].countered; },
         faultData() { return this.gameData[this.currentGame].fault; },
-        // 獲取當前局數的日誌數組
-        currentActionLogs() {
-            return this.actionLogs[this.currentGame] || [];
-        },
+        currentActionLogs() { return this.actionLogs[this.currentGame] || []; },
         
         statusTip() {
             if (this.waitingForReason) {
-                return "➔ 鎖定成功！請直接點選下方具體技術、反手後場、被反擊原因或違例進行登記。";
+                return "➔ 鎖定成功！請點選下方具體技術、反手或被反擊原因登記。";
             }
             if (this.opMode === 'sub') {
-                return "⚠️ 當前為【-1 模式】，點擊任意數據儲存格將執行扣減。";
+                return "⚠️ 當前為【-1 模式】，點擊任意單元格將執行扣減。";
             }
             if (this.opMode === 'edit') {
-                return "✏️ 當前為【改數值模式】，點擊儲存格可直接輸入數值修改。";
+                return "✏️ 當前為【改數值模式】，點擊格可直接輸入數值修改。";
             }
             return "點擊加得分；點擊黃色失分格鎖定拍數後，再選下方原因成因登記。";
         },
 
         totalUnforced() {
             let sum = 0;
-            // 1. 常規項非受迫
             this.techRows.forEach(t => {
                 let d = this.techData[t.key] || {};
                 if(this.isCellAllowed(t.key, 'unforced')) {
                     sum += (d.out || 0) + (d.net || 0) + (d.judge || 0);
                 }
             });
-            // 2. 反手後場非受迫
             sum += (this.backhandData.out || 0) + (this.backhandData.net || 0) + (this.backhandData.quality_poor || 0);
-            
-            // 3. 被反擊非受迫
-            Object.keys(this.counteredMap).forEach(k => {
-                sum += (this.counteredData[k] || 0);
-            });
+            Object.keys(this.counteredMap).forEach(k => { sum += (this.counteredData[k] || 0); });
             return sum;
         },
         totalForced() {
             let sum = 0;
-            // 1. 常規項受迫
             this.techRows.forEach(t => {
                 let d = this.techData[t.key] || {};
                 if(this.isCellAllowed(t.key, 'forced')) {
                     sum += (d.balance || 0) + (d.rhythm || 0) + (d.speed || 0);
                 }
             });
-            // 2. 反手後場受迫
             sum += (this.backhandData.be_moved || 0) + (this.backhandData.be_pressed || 0) + (this.backhandData.others || 0);
             return sum;
         },
@@ -633,40 +715,25 @@ new Vue({
         [1, 2, 3].forEach(g => {
             this.rallies.forEach(r => { Vue.set(this.gameData[g].rally, r.key, { pull_score: 0, rush_score: 0, counter_score: 0, attack_score: 0, opponent_give: 0, loss: 0 }); });
             this.techRows.forEach(t => { Vue.set(this.gameData[g].tech, t.key, { out: 0, net: 0, judge: 0, balance: 0, rhythm: 0, speed: 0 }); });
-            
-            // 初始化反手後場
             Vue.set(this.gameData[g], 'backhand', { out: 0, net: 0, quality_poor: 0, be_moved: 0, be_pressed: 0, others: 0 });
-            
-            // 初始化被反擊
-            Object.keys(this.counteredMap).forEach(k => {
-                Vue.set(this.gameData[g].countered, k, 0);
-            });
+            Object.keys(this.counteredMap).forEach(k => { Vue.set(this.gameData[g].countered, k, 0); });
         });
         this.loadFromLocalStorage();
     },
     methods: {
         isCellAllowed(techKey, type) {
             if (this.waitingForReason && techKey === 'serve') {
-                if (this.waitingRallyKey !== 'under5') {
-                    return false;
-                }
+                if (this.waitingRallyKey !== 'under5') return false;
             }
             return true;
         },
         switchGame(gNum) { this.currentGame = gNum; this.waitingForReason = false; },
         changeMode(mode) { this.opMode = mode; this.waitingForReason = false; },
-        
-        toggleAddSubMode() {
-            this.opMode = (this.opMode === 'add') ? 'sub' : 'add';
-            this.waitingForReason = false;
-        },
+        toggleAddSubMode() { this.opMode = (this.opMode === 'add') ? 'sub' : 'add'; this.waitingForReason = false; },
 
         pushUndoSnapshot() {
             if (this.undoStack.length > 50) this.undoStack.shift(); 
-            this.undoStack.push(JSON.stringify({
-                gameData: this.gameData,
-                actionLogs: this.actionLogs
-            }));
+            this.undoStack.push(JSON.stringify({ gameData: this.gameData, actionLogs: this.actionLogs }));
         },
 
         handleUndo() {
@@ -674,11 +741,9 @@ new Vue({
                 alert("目前沒有更早的歷史操作紀錄可以撤銷。");
                 return;
             }
-            
             if (confirm("確定要撤銷上一步操作嗎？")) {
                 const snap = JSON.parse(this.undoStack.pop());
                 const previousState = snap.gameData;
-                
                 [1, 2, 3].forEach(g => {
                     if (previousState[g]) {
                         Object.assign(this.gameData[g].rally, previousState[g].rally);
@@ -688,14 +753,9 @@ new Vue({
                         Object.assign(this.gameData[g].fault, previousState[g].fault);
                     }
                 });
-                
-                // 還原多局日誌
                 if (snap.actionLogs) {
-                    Object.keys(snap.actionLogs).forEach(g => {
-                        this.actionLogs[g] = snap.actionLogs[g];
-                    });
+                    Object.keys(snap.actionLogs).forEach(g => { this.actionLogs[g] = snap.actionLogs[g]; });
                 }
-                
                 this.waitingForReason = false;
                 this.waitingRallyKey = null;
             }
@@ -704,15 +764,7 @@ new Vue({
         handleScore(rallyKey, scoreType) {
             this.pushUndoSnapshot();
             const currentVal = this.rallyData[rallyKey][scoreType];
-            
-            const typeLabel = {
-                pull_score: '拉吊得分',
-                rush_score: '突擊得分',
-                counter_score: '反擊得分',
-                attack_score: '強攻得分',
-                opponent_give: '送分得分'
-            }[scoreType] || scoreType;
-
+            const typeLabel = { pull_score: '拉吊得分', rush_score: '突擊得分', counter_score: '反擊得分', attack_score: '強攻得分', opponent_give: '送分得分' }[scoreType] || scoreType;
             const rallyObj = this.rallies.find(r => r.key === rallyKey);
             const rallyLabel = rallyObj ? rallyObj.label : '未知拍';
 
@@ -721,7 +773,6 @@ new Vue({
                 if (input !== null && !isNaN(input)) {
                     const newVal = parseInt(input) || 0;
                     this.rallyData[rallyKey][scoreType] = newVal;
-                    // 改數值模式：不顯示常規格式
                     this.addLog(rallyKey, `（${rallyLabel} ${typeLabel} 改 ${newVal}）`, 'custom');
                 }
                 this.opMode = 'add';
@@ -733,12 +784,9 @@ new Vue({
             if (targetVal < 0) return;
 
             this.rallyData[rallyKey][scoreType] = targetVal;
-            
             if (change > 0) {
-                // +1 模式：套用標準格式
                 this.addLog(rallyKey, `${typeLabel}得分+1`, 'standard');
             } else {
-                // -1 模式：不顯示常規格式
                 this.addLog(rallyKey, `（${rallyLabel} ${typeLabel} -1）`, 'custom');
             }
         },
@@ -759,7 +807,6 @@ new Vue({
                 this.opMode = 'add';
                 return;
             }
-
             this.waitingRallyKey = rallyKey;
             this.waitingForReason = true;
         },
@@ -769,14 +816,12 @@ new Vue({
                 alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。");
                 return;
             }
-
             const isForced = ['balance', 'rhythm', 'speed'].includes(reasonKey);
             const typeStr = isForced ? 'forced' : 'unforced';
             if (!this.isCellAllowed(techKey, typeStr)) return;
 
             this.pushUndoSnapshot();
             const change = (this.opMode === 'sub') ? -1 : 1;
-            
             const currentLoss = this.rallyData[this.waitingRallyKey].loss;
             if (change < 0 && currentLoss <= 0) return;
 
@@ -788,18 +833,14 @@ new Vue({
 
             const techLabel = this.techRows.find(t => t.key === techKey)?.label || techKey;
             const reasonLabel = { out: '打出界', net: '打下網', judge: '判斷失誤', balance: '丟失重心', rhythm: '節奏不對', speed: '配速不對' }[reasonKey];
-            
             const rallyObj = this.rallies.find(r => r.key === this.waitingRallyKey);
             const rallyLabel = rallyObj ? rallyObj.label : '未知拍';
 
             if (change > 0) {
-                // +1 模式
                 this.addLog(this.waitingRallyKey, `${techLabel}（${reasonLabel}）`, 'standard');
             } else {
-                // -1 模式
                 this.addLog(this.waitingRallyKey, `（${rallyLabel} ${techLabel}${reasonLabel} -1）`, 'custom');
             }
-
             this.waitingForReason = false;
             this.waitingRallyKey = null;
         },
@@ -809,7 +850,6 @@ new Vue({
                 alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。");
                 return;
             }
-
             this.pushUndoSnapshot();
             const change = (this.opMode === 'sub') ? -1 : 1;
             const currentLoss = this.rallyData[this.waitingRallyKey].loss;
@@ -822,7 +862,6 @@ new Vue({
             this.rallyData[this.waitingRallyKey].loss = currentLoss + change;
 
             const fieldLabel = { out: '打出界', net: '打下網', quality_poor: '質量太差', be_moved: '被調動', be_pressed: '被快壓', others: '其他' }[field];
-            
             const rallyObj = this.rallies.find(r => r.key === this.waitingRallyKey);
             const rallyLabel = rallyObj ? rallyObj.label : '未知拍';
 
@@ -831,7 +870,6 @@ new Vue({
             } else {
                 this.addLog(this.waitingRallyKey, `（${rallyLabel} 反手後場${fieldLabel} -1）`, 'custom');
             }
-
             this.waitingForReason = false;
             this.waitingRallyKey = null;
         },
@@ -841,7 +879,6 @@ new Vue({
                 alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。");
                 return;
             }
-
             this.pushUndoSnapshot();
             const change = (this.opMode === 'sub') ? -1 : 1;
             const currentLoss = this.rallyData[this.waitingRallyKey].loss;
@@ -854,7 +891,6 @@ new Vue({
             this.rallyData[this.waitingRallyKey].loss = currentLoss + change;
 
             const fieldLabel = this.counteredMap[field];
-            
             const rallyObj = this.rallies.find(r => r.key === this.waitingRallyKey);
             const rallyLabel = rallyObj ? rallyObj.label : '未知拍';
 
@@ -863,7 +899,6 @@ new Vue({
             } else {
                 this.addLog(this.waitingRallyKey, `（${rallyLabel} 被反擊${fieldLabel} -1）`, 'custom');
             }
-
             this.waitingForReason = false;
             this.waitingRallyKey = null;
         },
@@ -873,7 +908,6 @@ new Vue({
                 alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。");
                 return;
             }
-
             this.pushUndoSnapshot();
             const change = (this.opMode === 'sub') ? -1 : 1;
             const currentLoss = this.rallyData[this.waitingRallyKey].loss;
@@ -893,27 +927,23 @@ new Vue({
             } else {
                 this.addLog(this.waitingRallyKey, `（${rallyLabel} 違例 -1）`, 'custom');
             }
-
             this.waitingForReason = false;
             this.waitingRallyKey = null;
         },
 
-        // 日誌增加 formatType 參數以支援不同模式的排版輸出
         addLog(rallyKey, description, formatType = 'standard') {
             const now = new Date();
             const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
             const rallyObj = this.rallies.find(r => r.key === rallyKey);
             const scoreObj = this.gameScores['g' + this.currentGame];
-            
             const rallyLabel = rallyObj ? rallyObj.label : '未知拍';
             
-            // 寫入當前局的獨立日誌數組
             this.actionLogs[this.currentGame].push({
                 realTime: timeStr,
                 rally: rallyLabel,
                 desc: description,
                 scoreAfter: `${scoreObj.win}:${scoreObj.loss}`,
-                formatType: formatType // 'standard' 或 'custom'
+                formatType: formatType
             });
 
             this.$nextTick(() => {
@@ -924,11 +954,7 @@ new Vue({
         },
 
         saveToLocalStorage() {
-            const dataToSave = {
-                gameData: this.gameData,
-                matchInfo: this.matchInfo,
-                actionLogs: this.actionLogs
-            };
+            const dataToSave = { gameData: this.gameData, matchInfo: this.matchInfo, actionLogs: this.actionLogs };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
         },
 
@@ -942,21 +968,14 @@ new Vue({
                             if (this.gameData[g]) {
                                 Object.assign(this.gameData[g].rally, parsed.gameData[g].rally);
                                 Object.assign(this.gameData[g].tech, parsed.gameData[g].tech);
-                                if (parsed.gameData[g].backhand) {
-                                    Object.assign(this.gameData[g].backhand, parsed.gameData[g].backhand);
-                                }
-                                if (parsed.gameData[g].countered) {
-                                    Object.assign(this.gameData[g].countered, parsed.gameData[g].countered);
-                                }
-                                if (parsed.gameData[g].fault) {
-                                    Object.assign(this.gameData[g].fault, parsed.gameData[g].fault);
-                                }
+                                if (parsed.gameData[g].backhand) Object.assign(this.gameData[g].backhand, parsed.gameData[g].backhand);
+                                if (parsed.gameData[g].countered) Object.assign(this.gameData[g].countered, parsed.gameData[g].countered);
+                                if (parsed.gameData[g].fault) Object.assign(this.gameData[g].fault, parsed.gameData[g].fault);
                             }
                         });
                     }
                     if (parsed.matchInfo) Object.assign(this.matchInfo, parsed.matchInfo);
                     if (parsed.actionLogs) {
-                        // 兼容舊版本本地數據（如以前是單個數組格式）
                         if (Array.isArray(parsed.actionLogs)) {
                             this.actionLogs = { 1: parsed.actionLogs, 2: [], 3: [] };
                         } else {
@@ -973,23 +992,11 @@ new Vue({
             if (confirm(`確定要清空第 ${this.currentGame} 局的所有統計數據與該局日誌嗎？此操作不可撤銷。`)) {
                 this.pushUndoSnapshot();
                 const g = this.currentGame;
-                
-                this.rallies.forEach(r => {
-                    this.gameData[g].rally[r.key] = { pull_score: 0, rush_score: 0, counter_score: 0, attack_score: 0, opponent_give: 0, loss: 0 };
-                });
-                this.techRows.forEach(t => {
-                    this.gameData[g].tech[t.key] = { out: 0, net: 0, judge: 0, balance: 0, rhythm: 0, speed: 0 };
-                });
-                
+                this.rallies.forEach(r => { this.gameData[g].rally[r.key] = { pull_score: 0, rush_score: 0, counter_score: 0, attack_score: 0, opponent_give: 0, loss: 0 }; });
+                this.techRows.forEach(t => { this.gameData[g].tech[t.key] = { out: 0, net: 0, judge: 0, balance: 0, rhythm: 0, speed: 0 }; });
                 this.gameData[g].backhand = { out: 0, net: 0, quality_poor: 0, be_moved: 0, be_pressed: 0, others: 0 };
-                
-                Object.keys(this.counteredMap).forEach(k => {
-                    this.gameData[g].countered[k] = 0;
-                });
-                
+                Object.keys(this.counteredMap).forEach(k => { this.gameData[g].countered[k] = 0; });
                 this.gameData[g].fault = { count: 0 };
-
-                // 核心：重置本局時，一併清空當前局的獨立日誌
                 this.actionLogs[g] = [];
                 
                 this.waitingForReason = false;
@@ -999,7 +1006,7 @@ new Vue({
         },
 
         exportCSV() {
-            let csvContent = "\ufeff"; // 預防 Excel 亂碼的 BOM 頭
+            let csvContent = "\ufeff"; 
             csvContent += `比賽日期,${this.matchInfo.date}\n`;
             csvContent += `選手對抗,${this.matchInfo.playerA} VS ${this.matchInfo.playerB}\n\n`;
 
@@ -1018,14 +1025,12 @@ new Vue({
                     const td = this.gameData[g].tech[t.key] || {};
                     const cellAllowedUnforced = this.isCellAllowed(t.key, 'unforced');
                     const cellAllowedForced = this.isCellAllowed(t.key, 'forced');
-
                     const out = cellAllowedUnforced ? (td.out || 0) : '—';
                     const net = cellAllowedUnforced ? (td.net || 0) : '—';
                     const judge = cellAllowedUnforced ? (td.judge || 0) : '—';
                     const balance = cellAllowedForced ? (td.balance || 0) : '—';
                     const rhythm = cellAllowedForced ? (td.rhythm || 0) : '—';
                     const speed = cellAllowedForced ? (td.speed || 0) : '—';
-
                     csvContent += `${t.label},${out},${net},${judge},${balance},${rhythm},${speed}\n`;
                 });
                 csvContent += "\n";
@@ -1033,14 +1038,11 @@ new Vue({
                 csvContent += `--- 第${g}局 專項模組數據 ---\n`;
                 const bh = this.gameData[g].backhand || {};
                 csvContent += `反手後場,非受迫-出界,${bh.out || 0},非受迫-下網,${bh.net || 0},非受迫-質量差,${bh.quality_poor || 0},受迫-被調動,${bh.be_moved || 0},受迫-被快壓,${bh.be_pressed || 0},受迫-其他,${bh.others || 0}\n`;
-                
                 const ct = this.gameData[g].countered || {};
                 csvContent += `被反擊原因,球速太慢,${ct.speed_slow || 0},時機不對,${ct.timing_bad || 0},弧度不夠,${ct.arc_low || 0},球路不對,${ct.route_bad || 0},質量太差,${ct.quality_poor || 0},其他,${ct.others || 0}\n`;
-                
                 const fl = this.gameData[g].fault || {};
                 csvContent += `違例失分,${fl.count || 0}\n\n`;
 
-                // 導出時按局分開展示流水日誌
                 csvContent += `--- 第${g}局 臨場操作流水日誌 ---\n`;
                 csvContent += "紀錄時間,局數與拍數,操作內容,當前比分\n";
                 const logsForGame = this.actionLogs[g] || [];
@@ -1058,7 +1060,7 @@ new Vue({
             const link = document.createElement("a");
             const fileName = `羽球臨場數據_${this.matchInfo.date}_${this.matchInfo.playerA}_VS_${this.matchInfo.playerB}.csv`;
             
-            if (navigator.msSaveBlob) { // IE 10+
+            if (navigator.msSaveBlob) { 
                 navigator.msSaveBlob(blob, fileName);
             } else {
                 link.href = URL.createObjectURL(blob);
