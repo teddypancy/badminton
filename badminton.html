@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>羽球臨場統計表 v0.3.3</title>
+    <title>羽球臨場統計表 v0.4</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <style>
         /* ==========================================================================
@@ -22,6 +22,10 @@
             --orange-badge: #FB923C;       
             --disabled-gray: #E5E7EB;      
 
+            /* 非受迫/受迫底色 */
+            --unforced-bg: #E0F2FE; /* 淺藍底色 */
+            --forced-bg: #DCFCE7;   /* 淺綠底色 */
+
             --header-font-size: 12px;      
             --header-date-size: 11px;      
             --game-label-size: 12px;       
@@ -31,10 +35,9 @@
             --rally-score-size: 14px;      
             --error-header-size: 10px;     
             --error-label-size: 10.5px;    
-            --error-score-size: 12px;      
+            --error-score-size: 11px;      
             --counter-label-size: 10.5px;  
             --counter-score-size: 11px;    
-            --footer-hint-bar-size: 11px;  
             --footer-btn-size: 12px;       
         }
 
@@ -96,7 +99,7 @@
 
         .workspace-top { flex: 1; display: flex; gap: 4px; width: 100%; min-height: 0; }
         
-        /* 左上：局數切換面板 (為日誌容器提供定位基準) */
+        /* 左上：局數切換面板 */
         .left-panel-wrapper {
             width: 32%;
             position: relative;
@@ -121,18 +124,13 @@
         .rally-score-cell { font-size: var(--rally-score-size) !important; }
 
         /* 下部工作區 */
-        .workspace-bottom { flex: 2; display: flex; flex-direction: column; border: var(--border-width) solid var(--border-color); background: #FFF; min-height: 0; }
+        .workspace-bottom { flex: 2.2; display: flex; flex-direction: column; border: var(--border-width) solid var(--border-color); background: #FFF; min-height: 0; }
         .matrix-scroll-wrapper { width: 100%; flex: 1; overflow-y: auto; }
 
         /* 下方：診斷失誤面板 */
         .error-header-row td { font-size: var(--error-header-size); }
         .error-label-cell { font-size: var(--error-label-size) !important; }
         .error-score-cell { font-size: var(--error-score-size) !important; }
-
-        /* 下方：被反擊獨立面板 */
-        .countered-panel { background: #F0F9FF; border-top: var(--border-width) solid var(--border-color); flex-shrink: 0; }
-        .counter-label-cell { font-size: var(--counter-label-size) !important; }
-        .counter-score-num { font-size: var(--counter-score-size); }
 
         /* 表格通用樣式 */
         table { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -147,6 +145,22 @@
         .bg-yellow    { background-color: var(--primary-yellow); color: #000; } 
         .white-cell   { background-color: #FFF; font-weight: normal; } 
         .disabled-cell { background-color: var(--disabled-gray); color: #9CA3AF; cursor: not-allowed; font-weight: normal; }
+        
+        /* 狀態說明儲存格樣式（深灰底、紅/黃字操作提示） */
+        .status-cell { 
+            background-color: #525252; 
+            color: #F87171; 
+            font-weight: bold; 
+            font-size: 11px; 
+            padding: 4px 8px;
+            text-align: center;
+            line-height: 1.4;
+            word-break: break-all;
+        }
+
+        /* 非受迫性與受迫性分欄底色 */
+        .unforced-cell { background-color: var(--unforced-bg); color: #000; font-weight: normal; }
+        .forced-cell { background-color: var(--forced-bg); color: #000; font-weight: normal; }
 
         .badge { background: var(--orange-badge); color: #FFF; font-size: 9px; padding: 0px 2px; border-radius: 3px; font-weight: normal; display: inline-block; }
         .inline-fault-btn { background: #EF4444; color: white; border: 1px solid #000; border-radius: 3px; padding: 1px 2px; font-size: 10px; font-weight: bold; cursor: pointer; margin-top: 2px; display: inline-block; width: 92%; box-sizing: border-box; }
@@ -159,7 +173,7 @@
         @keyframes pulse-sub { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 
         /* ==========================================================================
-           【覆蓋型日誌面板樣式（完全等同紅框位置大小）】
+           【覆蓋型日誌面板樣式】
            ========================================================================== */
         .embedded-log-window {
             position: absolute; 
@@ -208,10 +222,6 @@
         /* ==========================================
            【6. 頁尾控制與提示區】
            ========================================== */
-        .footer-hint-bar {
-            flex-shrink: 0; background: #000; color: #FFF; text-align: center; 
-            font-size: var(--footer-hint-bar-size); height: 22px; line-height: 22px; font-weight: bold; 
-        }
         .footer-control-bar {
             flex-shrink: 0; height: 40px; display: flex; gap: 4px; 
             padding-bottom: calc(4px + env(safe-area-inset-bottom)); 
@@ -224,6 +234,24 @@
         }
         .control-btn.active { background: #000 !important; color: var(--primary-yellow) !important; }
         .control-btn.mode-sub-active { background: #EF4444 !important; color: #FFF !important; }
+
+        /* 雙行疊加的特殊樣式 */
+        .double-cell-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            justify-content: space-around;
+        }
+        .double-cell-row {
+            height: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: normal;
+        }
+        .double-cell-row:first-child {
+            border-bottom: 1px dashed #A3A3A3;
+        }
     </style>
 </head>
 <body>
@@ -246,7 +274,7 @@
     <div class="workspace-container">
         <div class="workspace-top">
             
-            <!-- 左上定位容器（內含實時比分區與日誌小窗） -->
+            <!-- 左上定位容器 -->
             <div class="left-panel-wrapper">
                 <!-- 實時比分與局數切換面板 -->
                 <div class="score-switch-panel">
@@ -264,7 +292,7 @@
                     </table>
                 </div>
 
-                <!-- 📜 嵌入式操作日誌視窗（預設隱藏，與紅框大小位置完全相等） -->
+                <!-- 📜 嵌入式操作日誌視窗 -->
                 <div v-if="showLogWindow" class="embedded-log-window">
                     <div class="embedded-log-header">
                         <span>📜 臨場流水日誌</span>
@@ -301,6 +329,7 @@
                         
                         <td class="bg-yellow clickable rally-score-cell" 
                             :class="{
+                                'white-cell': true,
                                 'waiting-pulse-add': waitingForReason && waitingRallyKey === rally.key && opMode === 'add',
                                 'waiting-pulse-sub': waitingForReason && waitingRallyKey === rally.key && opMode === 'sub'
                             }"
@@ -312,10 +341,11 @@
             </div>
         </div>
 
-        <!-- 下部工作區 -->
+        <!-- 下部工作區：失誤統計與原因面板 -->
         <div class="workspace-bottom">
             <div class="matrix-scroll-wrapper">
                 <table>
+                    <!-- 統計表頭 -->
                     <tr class="error-header-row" style="height: 24px;">
                         <td rowspan="2" class="bg-yellow" style="width: 16%;">
                             <div>類型</div>
@@ -339,50 +369,105 @@
                         <td style="width: 14%; background-color: #34D399;">配速不對</td>
                     </tr>
 
+                    <!-- 1. 常規技術項 (9項) -->
                     <tr v-for="tech in techRows" :key="tech.key" style="height: 22px;">
                         <td class="bg-yellow error-label-cell">{{ tech.label }}</td>
                         
-                        <!-- 點擊綁定與狀態過濾 -->
-                        <td v-if="isCellAllowed(tech.key, 'unforced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'out')">{{ techData[tech.key].out }}</td>
+                        <!-- 非受迫性失誤分欄 (淺藍) -->
+                        <td v-if="isCellAllowed(tech.key, 'unforced')" class="unforced-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'out')">{{ techData[tech.key].out }}</td>
                         <td v-else class="disabled-cell">—</td>
 
-                        <td v-if="isCellAllowed(tech.key, 'unforced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'net')">{{ techData[tech.key].net }}</td>
+                        <td v-if="isCellAllowed(tech.key, 'unforced')" class="unforced-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'net')">{{ techData[tech.key].net }}</td>
                         <td v-else class="disabled-cell">—</td>
 
-                        <td v-if="isCellAllowed(tech.key, 'unforced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'judge')">{{ techData[tech.key].judge }}</td>
+                        <td v-if="isCellAllowed(tech.key, 'unforced')" class="unforced-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'judge')">{{ techData[tech.key].judge }}</td>
                         <td v-else class="disabled-cell">—</td>
 
-                        <td v-if="isCellAllowed(tech.key, 'forced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'balance')">{{ techData[tech.key].balance }}</td>
+                        <!-- 受迫性失誤分欄 (淺綠) - 已恢復「發球」與「殺球」在受迫性失誤下的可用狀態 -->
+                        <td v-if="isCellAllowed(tech.key, 'forced')" class="forced-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'balance')">{{ techData[tech.key].balance }}</td>
                         <td v-else class="disabled-cell">—</td>
 
-                        <td v-if="isCellAllowed(tech.key, 'forced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'rhythm')">{{ techData[tech.key].rhythm }}</td>
+                        <td v-if="isCellAllowed(tech.key, 'forced')" class="forced-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'rhythm')">{{ techData[tech.key].rhythm }}</td>
                         <td v-else class="disabled-cell">—</td>
 
-                        <td v-if="isCellAllowed(tech.key, 'forced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'speed')">{{ techData[tech.key].speed }}</td>
+                        <td v-if="isCellAllowed(tech.key, 'forced')" class="forced-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'speed')">{{ techData[tech.key].speed }}</td>
                         <td v-else class="disabled-cell">—</td>
                     </tr>
-                </table>
-            </div>
 
-            <!-- 被反擊獨立面板 -->
-            <div class="countered-panel">
-                <table>
-                    <tr style="height: 26px;">
-                        <td class="bg-yellow counter-label-cell" style="width: 16%;">被反擊</td>
-                        <td v-for="cType in counteredTypes" :key="cType.key" class="white-cell clickable counter-label-cell" @click="handleCounteredClick(cType.key)">
-                            {{ cType.label }} <span class="counter-score-num" style="color: #2563EB; font-weight: bold;">({{ counteredData[cType.key] }})</span>
+                    <!-- 2. 反手後場（非受迫性已開放使用，底色淺藍，全部皆為獨立按鈕） -->
+                    <tr style="height: 28px;">
+                        <td class="bg-skin error-label-cell">反手後場</td>
+                        <!-- 非受迫 (淺藍) -->
+                        <td class="unforced-cell clickable error-score-cell" @click="handleBackhandDirectClick('out')">{{ backhandData.out }}</td>
+                        <td class="unforced-cell clickable error-score-cell" @click="handleBackhandDirectClick('net')">{{ backhandData.net }}</td>
+                        <td class="unforced-cell clickable" @click="handleBackhandDirectClick('quality_poor')">
+                            <div>質量太差</div>
+                            <div style="font-weight: bold;">({{ backhandData.quality_poor }})</div>
+                        </td>
+                        <!-- 受迫 (淺綠) -->
+                        <td class="forced-cell clickable" @click="handleBackhandDirectClick('be_moved')">
+                            <div>被調動</div>
+                            <div style="font-weight: bold;">({{ backhandData.be_moved }})</div>
+                        </td>
+                        <td class="forced-cell clickable" @click="handleBackhandDirectClick('be_pressed')">
+                            <div>被快壓</div>
+                            <div style="font-weight: bold;">({{ backhandData.be_pressed }})</div>
+                        </td>
+                        <td class="forced-cell clickable" @click="handleBackhandDirectClick('others')">
+                            <div>其他</div>
+                            <div style="font-weight: bold;">({{ backhandData.others }})</div>
+                        </td>
+                    </tr>
+
+                    <!-- 3. 被反擊（6 個完全獨立的單元格，各自對應不同的失分原因，點擊直接登記，不再彈窗） -->
+                    <tr style="height: 48px;">
+                        <td class="bg-skin error-label-cell">被反擊</td>
+                        
+                        <!-- 雙層第一欄：球速太慢（上）與 時機不對（下），各自擁有獨立 clickable 屬性與 click 事件 -->
+                        <td class="unforced-cell" style="padding: 0;">
+                            <div class="double-cell-container">
+                                <div class="double-cell-row clickable" @click="handleCounteredDirectClick('speed_slow')">
+                                    球速太慢 ({{ counteredData.speed_slow }})
+                                </div>
+                                <div class="double-cell-row clickable" @click="handleCounteredDirectClick('timing_bad')">
+                                    時機不對 ({{ counteredData.timing_bad }})
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <!-- 雙層第二欄：弧度不夠（上）與 球路不對（下），各自擁有獨立 clickable 屬性與 click 事件 -->
+                        <td class="unforced-cell" style="padding: 0;">
+                            <div class="double-cell-container">
+                                <div class="double-cell-row clickable" @click="handleCounteredDirectClick('arc_low')">
+                                    弧度不夠 ({{ counteredData.arc_low }})
+                                </div>
+                                <div class="double-cell-row clickable" @click="handleCounteredDirectClick('route_bad')">
+                                    球路不對 ({{ counteredData.route_bad }})
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <!-- 雙層第三欄：質量太差（上）與 其他（下），各自擁有獨立 clickable 屬性與 click 事件 -->
+                        <td class="unforced-cell" style="padding: 0;">
+                            <div class="double-cell-container">
+                                <div class="double-cell-row clickable" @click="handleCounteredDirectClick('quality_poor')">
+                                    質量太差 ({{ counteredData.quality_poor }})
+                                </div>
+                                <div class="double-cell-row clickable" @click="handleCounteredDirectClick('others')">
+                                    其他 ({{ counteredData.others }})
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <!-- 狀態說明合併格（顯示動態提示文字） -->
+                        <td colspan="3" class="status-cell">
+                            <div style="color: #FCD34D;">【狀態與操作指引】</div>
+                            <div style="color: #FFF; font-size: 10px; margin-top: 2px;">{{ statusTip }}</div>
                         </td>
                     </tr>
                 </table>
             </div>
         </div>
-    </div>
-
-    <!-- 狀態提示列 -->
-    <div class="footer-hint-bar">
-        <span v-if="waitingForReason" style="color: var(--primary-yellow);">➔ 鎖定成功！請點選下方具體原因成因、被反擊或違例進行登記</span>
-        <span v-else-if="opMode === 'sub'" style="color: #FCA5A5;">⚠️ 當前為【-1 模式】，點擊儲存格將扣減數據</span>
-        <span v-else style="color: #9CA3AF;">點擊加得分，點擊黃色失分格鎖定後再選成因登記</span>
     </div>
 
     <!-- 底部控制按鈕列 -->
@@ -402,16 +487,16 @@
         <div class="control-btn" :class="{active: opMode === 'edit'}" @click="changeMode('edit')">改數值</div>
         
         <!-- 5. 導出按鈕 -->
-        <div class="control-btn" style="background: #10B981; color: #FFF;" @click="exportCSV">導出CSV</div>
+        <div class="control-btn" style="background: #10B981; color: #FFF;" @click="exportCSV">導出數據</div>
         
         <!-- 6. 重置本局按鈕 -->
-        <div class="control-btn" style="background: #EF4444; color: #FFF;" @click="clearData">重置本局</div>
+        <div class="control-btn" style="background: #EF4444; color: #FFF;" @click="clearData">清空數據</div>
     </div>
 
 </div>
 
 <script>
-const STORAGE_KEY = 'badminton_stat_sheet_v3_2';
+const STORAGE_KEY = 'badminton_stat_sheet_v4_2';
 
 new Vue({
     el: '#app',
@@ -435,30 +520,28 @@ new Vue({
             ],
             techRows: [
                 { key: 'serve', label: '發球' },
-                { key: 'receive', label: '接發球' },
                 { key: 'net_drop', label: '放網' },
                 { key: 'lift', label: '挑球' },
                 { key: 'cross_net', label: '勾對角' },
                 { key: 'push_poke', label: '推撲' },
                 { key: 'drive', label: '抽擋' },
-                { key: 'block_smash', label: '接殺' },
                 { key: 'drop', label: '吊球' },
                 { key: 'smash', label: '殺球' },
-                { key: 'clear', label: '高遠球' },
-                { key: 'backhand_trans', label: '反手過渡' }
+                { key: 'clear', label: '高遠球' }
             ],
-            counteredTypes: [
-                { key: 'speed_slow', label: '球速太慢' },
-                { key: 'arc_low', label: '弧度不夠' },
-                { key: 'timing_bad', label: '時機不對' },
-                { key: 'quality_poor', label: '質量太差' },
-                { key: 'lucky_shot', label: '幸運球' },
-                { key: 'others', label: '其他' }
-            ],
+            // 被反擊 6 種原因的名稱映射
+            counteredMap: {
+                speed_slow: '球速太慢',
+                timing_bad: '時機不對',
+                arc_low: '弧度不夠',
+                route_bad: '球路不對',
+                quality_poor: '質量太差',
+                others: '其他'
+            },
             gameData: { 
-                1: { rally: {}, tech: {}, countered: {}, fault: { count: 0 } }, 
-                2: { rally: {}, tech: {}, countered: {}, fault: { count: 0 } }, 
-                3: { rally: {}, tech: {}, countered: {}, fault: { count: 0 } } 
+                1: { rally: {}, tech: {}, backhand: {}, countered: {}, fault: { count: 0 } }, 
+                2: { rally: {}, tech: {}, backhand: {}, countered: {}, fault: { count: 0 } }, 
+                3: { rally: {}, tech: {}, backhand: {}, countered: {}, fault: { count: 0 } } 
             }
         }
     },
@@ -470,27 +553,52 @@ new Vue({
     computed: {
         rallyData() { return this.gameData[this.currentGame].rally; },
         techData() { return this.gameData[this.currentGame].tech; },
+        backhandData() { return this.gameData[this.currentGame].backhand; },
         counteredData() { return this.gameData[this.currentGame].countered; },
         faultData() { return this.gameData[this.currentGame].fault; },
         
+        statusTip() {
+            if (this.waitingForReason) {
+                return "➔ 鎖定成功！請直接點選下方具體技術、反手後場、被反擊原因或違例進行登記。";
+            }
+            if (this.opMode === 'sub') {
+                return "⚠️ 當前為【-1 模式】，點擊任意數據儲存格將執行扣減。";
+            }
+            if (this.opMode === 'edit') {
+                return "✏️ 當前為【改數值模式】，點擊儲存格可直接輸入數值修改。";
+            }
+            return "點擊加得分；點擊黃色失分格鎖定拍數後，再選下方原因成因登記。";
+        },
+
         totalUnforced() {
             let sum = 0;
+            // 1. 常規項非受迫
             this.techRows.forEach(t => {
                 let d = this.techData[t.key] || {};
                 if(this.isCellAllowed(t.key, 'unforced')) {
                     sum += (d.out || 0) + (d.net || 0) + (d.judge || 0);
                 }
             });
+            // 2. 反手後場非受迫
+            sum += (this.backhandData.out || 0) + (this.backhandData.net || 0) + (this.backhandData.quality_poor || 0);
+            
+            // 3. 被反擊非受迫
+            Object.keys(this.counteredMap).forEach(k => {
+                sum += (this.counteredData[k] || 0);
+            });
             return sum;
         },
         totalForced() {
             let sum = 0;
+            // 1. 常規項受迫
             this.techRows.forEach(t => {
                 let d = this.techData[t.key] || {};
                 if(this.isCellAllowed(t.key, 'forced')) {
                     sum += (d.balance || 0) + (d.rhythm || 0) + (d.speed || 0);
                 }
             });
+            // 2. 反手後場受迫
+            sum += (this.backhandData.be_moved || 0) + (this.backhandData.be_pressed || 0) + (this.backhandData.others || 0);
             return sum;
         },
         gameScores() {
@@ -510,16 +618,21 @@ new Vue({
         [1, 2, 3].forEach(g => {
             this.rallies.forEach(r => { Vue.set(this.gameData[g].rally, r.key, { pull_score: 0, rush_score: 0, counter_score: 0, attack_score: 0, opponent_give: 0, loss: 0 }); });
             this.techRows.forEach(t => { Vue.set(this.gameData[g].tech, t.key, { out: 0, net: 0, judge: 0, balance: 0, rhythm: 0, speed: 0 }); });
-            this.counteredTypes.forEach(c => { Vue.set(this.gameData[g].countered, c.key, 0); });
+            
+            // 初始化反手後場
+            Vue.set(this.gameData[g], 'backhand', { out: 0, net: 0, quality_poor: 0, be_moved: 0, be_pressed: 0, others: 0 });
+            
+            // 初始化被反擊
+            Object.keys(this.counteredMap).forEach(k => {
+                Vue.set(this.gameData[g].countered, k, 0);
+            });
         });
         this.loadFromLocalStorage();
     },
     methods: {
         isCellAllowed(techKey, type) {
-            if ((techKey === 'serve' || techKey === 'smash') && type === 'forced') return false;
-            if (techKey === 'block_smash' && type === 'unforced') return false;
-            
-            if (this.waitingForReason && (techKey === 'serve' || techKey === 'receive')) {
+            // 受迫性失誤中，「發球」與「殺球」恢復為可用單元格，不再執行 disabled-cell 的邏輯
+            if (this.waitingForReason && techKey === 'serve') {
                 if (this.waitingRallyKey !== 'under5') {
                     return false;
                 }
@@ -542,7 +655,6 @@ new Vue({
             }));
         },
 
-        // 優化：點擊撤銷時新增二次確認彈窗
         handleUndo() {
             if (this.undoStack.length === 0) {
                 alert("目前沒有更早的歷史操作紀錄可以撤銷。");
@@ -557,261 +669,311 @@ new Vue({
                     if (previousState[g]) {
                         Object.assign(this.gameData[g].rally, previousState[g].rally);
                         Object.assign(this.gameData[g].tech, previousState[g].tech);
+                        Object.assign(this.gameData[g].backhand, previousState[g].backhand);
                         Object.assign(this.gameData[g].countered, previousState[g].countered);
                         Object.assign(this.gameData[g].fault, previousState[g].fault);
                     }
                 });
-                
                 this.actionLogs = snap.logs;
                 this.waitingForReason = false;
+                this.waitingRallyKey = null;
             }
         },
 
-        getRealSystemTime() {
-            const now = new Date();
-            const hh = now.getHours().toString().padStart(2, '0');
-            const mm = now.getMinutes().toString().padStart(2, '0');
-            const ss = now.getSeconds().toString().padStart(2, '0');
-            return `${hh}:${mm}:${ss}`;
-        },
-
-        pushLog(rallyLabel, description) {
-            const scoreStr = `${this.gameScores['g' + this.currentGame].win}:${this.gameScores['g' + this.currentGame].loss}`;
-            this.actionLogs.push({
-                realTime: this.getRealSystemTime(),
-                rally: rallyLabel,
-                desc: description,
-                scoreAfter: scoreStr
-            });
-            this.$nextTick(() => {
-                const container = this.$refs.logContainer;
-                if (container) container.scrollTop = container.scrollHeight;
-            });
-        },
-
-        handleScore(rallyKey, field) {
-            const rallyLabel = this.rallies.find(r => r.key === rallyKey).label;
-            const fieldLabels = { pull_score:'拉吊得分', rush_score:'突擊得分', counter_score:'反擊得分', attack_score:'強攻得分', opponent_give:'對手送分' };
-
+        handleScore(rallyKey, scoreType) {
+            this.pushUndoSnapshot();
+            const currentVal = this.rallyData[rallyKey][scoreType];
+            
             if (this.opMode === 'edit') {
-                let val = prompt(`修改 [${rallyLabel}] ${fieldLabels[field]} 數值:`, this.rallyData[rallyKey][field]);
-                if (val !== null) {
-                    this.pushUndoSnapshot();
-                    this.rallyData[rallyKey][field] = parseInt(val) || 0;
-                    this.pushLog(rallyLabel, `${fieldLabels[field]}手動修改為 ${val}`);
+                const input = prompt(`請輸入新的數值 (當前: ${currentVal})`, currentVal);
+                if (input !== null && !isNaN(input)) {
+                    this.rallyData[rallyKey][scoreType] = parseInt(input) || 0;
+                    this.addLog(rallyKey, `手動修改 [${scoreType}] 數值為 ${input}`);
                 }
+                this.opMode = 'add';
+                return;
+            }
+
+            const change = (this.opMode === 'sub') ? -1 : 1;
+            const targetVal = currentVal + change;
+            if (targetVal < 0) return;
+
+            this.rallyData[rallyKey][scoreType] = targetVal;
+            this.addLog(rallyKey, `${change > 0 ? '增加' : '減少'} [${scoreType}]`);
+        },
+
+        triggerLoss(rallyKey) {
+            if (this.opMode === 'edit') {
+                const currentVal = this.rallyData[rallyKey].loss;
+                const input = prompt(`請輸入新的失分數值 (當前: ${currentVal})`, currentVal);
+                if (input !== null && !isNaN(input)) {
+                    this.pushUndoSnapshot();
+                    this.rallyData[rallyKey].loss = parseInt(input) || 0;
+                    this.addLog(rallyKey, `手動修改 [失分] 數值為 ${input}`);
+                }
+                this.opMode = 'add';
+                return;
+            }
+
+            this.waitingRallyKey = rallyKey;
+            this.waitingForReason = true;
+        },
+
+        handleReasonClick(techKey, reasonKey) {
+            if (!this.waitingForReason) {
+                alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。");
+                return;
+            }
+
+            const isForced = ['balance', 'rhythm', 'speed'].includes(reasonKey);
+            const typeStr = isForced ? 'forced' : 'unforced';
+            if (!this.isCellAllowed(techKey, typeStr)) return;
+
+            this.pushUndoSnapshot();
+            const change = (this.opMode === 'sub') ? -1 : 1;
+            
+            const currentLoss = this.rallyData[this.waitingRallyKey].loss;
+            if (change < 0 && currentLoss <= 0) return;
+
+            const currentTechVal = this.techData[techKey][reasonKey] || 0;
+            if (change < 0 && currentTechVal <= 0) return;
+
+            this.techData[techKey][reasonKey] = currentTechVal + change;
+            this.rallyData[this.waitingRallyKey].loss = currentLoss + change;
+
+            const techLabel = this.techRows.find(t => t.key === techKey)?.label || techKey;
+            const reasonLabel = { out: '打出界', net: '打下網', judge: '判斷失誤', balance: '丟失重心', rhythm: '節奏不對', speed: '配速不對' }[reasonKey];
+            
+            this.addLog(this.waitingRallyKey, `${change > 0 ? '登記' : '扣減'}失誤成因：【${techLabel} - ${reasonLabel}】`);
+
+            this.waitingForReason = false;
+            this.waitingRallyKey = null;
+        },
+
+        handleBackhandDirectClick(field) {
+            if (!this.waitingForReason) {
+                alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。");
                 return;
             }
 
             this.pushUndoSnapshot();
-            let amt = this.opMode === 'add' ? 1 : -1;
-            const oldVal = this.rallyData[rallyKey][field];
-            this.rallyData[rallyKey][field] = Math.max(0, this.rallyData[rallyKey][field] + amt);
-            
-            if (this.rallyData[rallyKey][field] !== oldVal) {
-                this.pushLog(rallyLabel, `${fieldLabels[field]}${amt > 0 ? '+1' : '-1'}`);
-            }
+            const change = (this.opMode === 'sub') ? -1 : 1;
+            const currentLoss = this.rallyData[this.waitingRallyKey].loss;
+            if (change < 0 && currentLoss <= 0) return;
+
+            const currentBackhandVal = this.backhandData[field] || 0;
+            if (change < 0 && currentBackhandVal <= 0) return;
+
+            this.backhandData[field] = currentBackhandVal + change;
+            this.rallyData[this.waitingRallyKey].loss = currentLoss + change;
+
+            const fieldLabel = { out: '打出界', net: '打下網', quality_poor: '質量太差', be_moved: '被調動', be_pressed: '被快壓', others: '其他' }[field];
+            this.addLog(this.waitingRallyKey, `${change > 0 ? '登記' : '扣減'}反手後場失誤：【${fieldLabel}】`);
+
+            this.waitingForReason = false;
+            this.waitingRallyKey = null;
         },
 
-        // 優化：點擊失分格時不主動彈出日誌視窗，只進行鎖定
-        triggerLoss(rallyKey) {
-            const rallyLabel = this.rallies.find(r => r.key === rallyKey).label;
-            if (this.opMode === 'edit') {
-                let val = prompt(`修改 [${rallyLabel}] 失分總數:`, this.rallyData[rallyKey].loss);
-                if (val !== null) {
-                    this.pushUndoSnapshot();
-                    this.rallyData[rallyKey].loss = parseInt(val) || 0;
-                    this.pushLog(rallyLabel, `失分手動修改為 ${val}`);
-                }
-                return;
-            }
-            this.waitingForReason = true;
-            this.waitingRallyKey = rallyKey;
-        },
-
-        handleReasonClick(techKey, field) {
-            const rallyLabel = this.rallies.find(r => r.key === this.waitingRallyKey).label;
-            const techLabel = this.techRows.find(t => t.key === techKey).label;
-            const typeLabels = { out:'（打出界）', net:'（打下網）', judge:'（判斷失誤）', balance:'（丟失重心）', rhythm:'（節奏不對）', speed:'（配速不對）' };
-
-            if (this.opMode === 'edit') {
-                let val = prompt(`修改 [${techLabel}] ${typeLabels[field]} 次數:`, this.techData[techKey][field]);
-                if (val !== null) {
-                    this.pushUndoSnapshot();
-                    this.techData[techKey][field] = parseInt(val) || 0;
-                    this.pushLog(rallyLabel, `手動修改 [${techLabel}]${typeLabels[field]} 為 ${val}`);
-                }
+        handleCounteredDirectClick(field) {
+            if (!this.waitingForReason) {
+                alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。");
                 return;
             }
 
-            if (this.waitingForReason) {
-                this.pushUndoSnapshot();
-                if (this.opMode === 'add') {
-                    this.rallyData[this.waitingRallyKey].loss += 1;
-                    this.techData[techKey][field] += 1;
-                    this.pushLog(rallyLabel, `${techLabel}${typeLabels[field]}`);
-                } else if (this.opMode === 'sub') {
-                    if (this.techData[techKey][field] > 0 && this.rallyData[this.waitingRallyKey].loss > 0) {
-                        this.rallyData[this.waitingRallyKey].loss -= 1;
-                        this.techData[techKey][field] -= 1;
-                        this.pushLog(rallyLabel, `扣減：${techLabel}${typeLabels[field]}`);
-                    } else {
-                        alert("扣減失敗：該項細分登記已為 0。");
-                    }
-                }
-                this.waitingForReason = false;
-                this.waitingRallyKey = null;
-            }
-        },
+            this.pushUndoSnapshot();
+            const change = (this.opMode === 'sub') ? -1 : 1;
+            const currentLoss = this.rallyData[this.waitingRallyKey].loss;
+            if (change < 0 && currentLoss <= 0) return;
 
-        handleCounteredClick(field) {
-            const cLabel = this.counteredTypes.find(c => c.key === field).label;
-            if (this.opMode === 'edit') {
-                let val = prompt(`修改 被反擊-[${cLabel}] 次數:`, this.counteredData[field]);
-                if (val !== null) {
-                    this.pushUndoSnapshot();
-                    this.counteredData[field] = parseInt(val) || 0;
-                    this.pushLog('無', `手動修改 被反擊-[${cLabel}] 為 ${val}`);
-                }
-                return;
-            }
+            const currentCounteredVal = this.counteredData[field] || 0;
+            if (change < 0 && currentCounteredVal <= 0) return;
 
-            if (this.waitingForReason) {
-                this.pushUndoSnapshot();
-                const rallyLabel = this.rallies.find(r => r.key === this.waitingRallyKey).label;
-                if (this.opMode === 'add') {
-                    this.rallyData[this.waitingRallyKey].loss += 1;
-                    this.counteredData[field] += 1;
-                    this.pushLog(rallyLabel, `被反擊（${cLabel}）`);
-                } else if (this.opMode === 'sub') {
-                    if (this.counteredData[field] > 0 && this.rallyData[this.waitingRallyKey].loss > 0) {
-                        this.rallyData[this.waitingRallyKey].loss -= 1;
-                        this.counteredData[field] -= 1;
-                        this.pushLog(rallyLabel, `扣減：被反擊（${cLabel}）`);
-                    } else {
-                        alert("扣減失敗：該反擊成因數據已為 0。");
-                    }
-                }
-                this.waitingForReason = false;
-                this.waitingRallyKey = null;
-            } else {
-                alert("操作提示：請先點擊上方多拍面板中的黃色『失分』格鎖定拍數，再點選下方被反擊成因！");
-            }
+            this.counteredData[field] = currentCounteredVal + change;
+            this.rallyData[this.waitingRallyKey].loss = currentLoss + change;
+
+            const fieldLabel = this.counteredMap[field];
+            this.addLog(this.waitingRallyKey, `${change > 0 ? '登記' : '扣減'}被反擊成因：【${fieldLabel}】`);
+
+            this.waitingForReason = false;
+            this.waitingRallyKey = null;
         },
 
         handleFaultClick() {
-            if (this.opMode === 'edit') {
-                let val = prompt("修改違例次數:", this.faultData.count);
-                if (val !== null) {
-                    this.pushUndoSnapshot();
-                    this.faultData.count = parseInt(val) || 0;
-                    this.pushLog('無', `手動修改 違例次數為 ${val}`);
-                }
+            if (!this.waitingForReason) {
+                alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。");
                 return;
             }
 
-            if (this.waitingForReason) {
-                this.pushUndoSnapshot();
-                const rallyLabel = this.rallies.find(r => r.key === this.waitingRallyKey).label;
-                if (this.opMode === 'add') {
-                    this.rallyData[this.waitingRallyKey].loss += 1;
-                    this.faultData.count += 1;
-                    this.pushLog(rallyLabel, `違例失分`);
-                } else if (this.opMode === 'sub') {
-                    if (this.faultData.count > 0 && this.rallyData[this.waitingRallyKey].loss > 0) {
-                        this.rallyData[this.waitingRallyKey].loss -= 1;
-                        this.faultData.count -= 1;
-                        this.pushLog(rallyLabel, `扣減：違例失分`);
-                    } else {
-                        alert("扣減失敗：違例次數已為 0。");
-                    }
+            this.pushUndoSnapshot();
+            const change = (this.opMode === 'sub') ? -1 : 1;
+            const currentLoss = this.rallyData[this.waitingRallyKey].loss;
+            if (change < 0 && currentLoss <= 0) return;
+
+            const currentFaultVal = this.faultData.count || 0;
+            if (change < 0 && currentFaultVal <= 0) return;
+
+            this.faultData.count = currentFaultVal + change;
+            this.rallyData[this.waitingRallyKey].loss = currentLoss + change;
+
+            this.addLog(this.waitingRallyKey, `${change > 0 ? '登記' : '扣減'}對手得分：【違例】`);
+
+            this.waitingForReason = false;
+            this.waitingRallyKey = null;
+        },
+
+        addLog(rallyKey, description) {
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            const rallyObj = this.rallies.find(r => r.key === rallyKey);
+            const scoreObj = this.gameScores['g' + this.currentGame];
+            
+            this.actionLogs.push({
+                realTime: timeStr,
+                rally: `第${this.currentGame}局 - ${rallyObj ? rallyObj.label : '未知拍'}`,
+                desc: description,
+                scoreAfter: `${scoreObj.win} : ${scoreObj.loss}`
+            });
+
+            this.$nextTick(() => {
+                if (this.$refs.logContainer) {
+                    this.$refs.logContainer.scrollTop = this.$refs.logContainer.scrollHeight;
                 }
-                this.waitingForReason = false;
-                this.waitingRallyKey = null;
-            } else {
-                alert("操作提示：請先點擊上方多拍面板中的黃色『失分』格鎖定拍數，再點擊違例按鈕！");
+            });
+        },
+
+        saveToLocalStorage() {
+            const dataToSave = {
+                gameData: this.gameData,
+                matchInfo: this.matchInfo,
+                actionLogs: this.actionLogs
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+        },
+
+        loadFromLocalStorage() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.gameData) {
+                        Object.keys(parsed.gameData).forEach(g => {
+                            if (this.gameData[g]) {
+                                Object.assign(this.gameData[g].rally, parsed.gameData[g].rally);
+                                Object.assign(this.gameData[g].tech, parsed.gameData[g].tech);
+                                if (parsed.gameData[g].backhand) {
+                                    Object.assign(this.gameData[g].backhand, parsed.gameData[g].backhand);
+                                }
+                                if (parsed.gameData[g].countered) {
+                                    Object.assign(this.gameData[g].countered, parsed.gameData[g].countered);
+                                }
+                                if (parsed.gameData[g].fault) {
+                                    Object.assign(this.gameData[g].fault, parsed.gameData[g].fault);
+                                }
+                            }
+                        });
+                    }
+                    if (parsed.matchInfo) Object.assign(this.matchInfo, parsed.matchInfo);
+                    if (parsed.actionLogs) this.actionLogs = parsed.actionLogs;
+                } catch (e) {
+                    console.error("讀取本地快取失敗：", e);
+                }
             }
         },
 
         clearData() {
-            if (confirm("確定重置當前局數據？此操作將同時清空當前局的流水日誌，且無法還原。")) {
+            if (confirm(`確定要清空第 ${this.currentGame} 局的所有統計數據嗎？此操作不可撤銷。`)) {
                 this.pushUndoSnapshot();
-                this.rallies.forEach(r => { this.gameData[this.currentGame].rally[r.key] = { pull_score: 0, rush_score: 0, counter_score: 0, attack_score: 0, opponent_give: 0, loss: 0 }; });
-                this.techRows.forEach(t => { this.gameData[this.currentGame].tech[t.key] = { out: 0, net: 0, judge: 0, balance: 0, rhythm: 0, speed: 0 }; });
-                this.counteredTypes.forEach(c => { this.counteredData[c.key] = 0; });
-                this.faultData.count = 0;
-                this.actionLogs = []; 
-                this.waitingForReason = false;
-            }
-        },
+                const g = this.currentGame;
+                
+                this.rallies.forEach(r => {
+                    this.gameData[g].rally[r.key] = { pull_score: 0, rush_score: 0, counter_score: 0, attack_score: 0, opponent_give: 0, loss: 0 };
+                });
+                this.techRows.forEach(t => {
+                    this.gameData[g].tech[t.key] = { out: 0, net: 0, judge: 0, balance: 0, rhythm: 0, speed: 0 };
+                });
+                
+                this.gameData[g].backhand = { out: 0, net: 0, quality_poor: 0, be_moved: 0, be_pressed: 0, others: 0 };
+                
+                Object.keys(this.counteredMap).forEach(k => {
+                    this.gameData[g].countered[k] = 0;
+                });
+                
+                this.gameData[g].fault = { count: 0 };
 
-        saveToLocalStorage() {
-            try {
-                const dataToSave = { matchInfo: this.matchInfo, gameData: this.gameData, actionLogs: this.actionLogs };
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
-            } catch (e) { console.error(e); }
-        },
-        loadFromLocalStorage() {
-            try {
-                const raw = localStorage.getItem(STORAGE_KEY);
-                if (raw) {
-                    const parsed = JSON.parse(raw);
-                    if (parsed.matchInfo) this.matchInfo = parsed.matchInfo;
-                    if (parsed.actionLogs) this.actionLogs = parsed.actionLogs;
-                    if (parsed.gameData) {
-                        [1, 2, 3].forEach(g => {
-                            if (parsed.gameData[g]) {
-                                const src = parsed.gameData[g];
-                                if (src.rally) Object.assign(this.gameData[g].rally, src.rally);
-                                if (src.tech) Object.assign(this.gameData[g].tech, src.tech);
-                                if (src.countered) Object.assign(this.gameData[g].countered, src.countered);
-                                if (src.fault) Object.assign(this.gameData[g].fault, src.fault);
-                            }
-                        });
-                    }
-                }
-            } catch (e) { console.error(e); }
+                this.actionLogs = this.actionLogs.filter(log => !log.rally.startsWith(`第${g}局`));
+                this.waitingForReason = false;
+                this.waitingRallyKey = null;
+                alert(`第 ${g} 局數據已成功重置。`);
+            }
         },
 
         exportCSV() {
-            let csvContent = "\uFEFF"; 
-            csvContent += `[工作表 1 - 核心技術統計數據]\n`;
-            csvContent += `比賽日期,${this.matchInfo.date},選手A,${this.matchInfo.playerA || '未填'},選手B,${this.matchInfo.playerB || '未填'}\n\n`;
-            
+            let csvContent = "\ufeff"; // 預防 Excel 亂碼的 BOM 頭
+            csvContent += `比賽日期,${this.matchInfo.date}\n`;
+            csvContent += `選手對抗,${this.matchInfo.playerA} VS ${this.matchInfo.playerB}\n\n`;
+
             [1, 2, 3].forEach(g => {
-                csvContent += `--- 第 ${g} 局 ---\n多拍能力,拉吊得分,突擊得分,反擊得分,強攻得分,對手送分,失分(丟分)\n`;
-                this.rallies.forEach(r => { let d = this.gameData[g].rally[r.key]; csvContent += `${r.label},${d.pull_score},${d.rush_score},${d.counter_score},${d.attack_score},${d.opponent_give},${d.loss}\n`; });
-                csvContent += `違例得分總計,${this.gameData[g].fault.count}\n`;
-                
-                csvContent += "\n技術類型,非受迫-打出界,非受迫-打下網,非受迫-判斷失誤,受迫-丟失重心,受迫-節奏不對,受迫-配速不對\n";
-                this.techRows.forEach(t => { let d = this.gameData[g].tech[t.key]; csvContent += `${t.label},${d.out},${d.net},${d.judge},${d.balance},${d.rhythm},${d.speed}\n`; });
-                
-                let cd = this.gameData[g].countered;
-                csvContent += `Ref被反擊成因,球速太慢,${cd.speed_slow},弧度不夠,${cd.arc_low},時機不對,${cd.timing_bad},質量太差,${cd.quality_poor},幸運球,${cd.lucky_shot},其他,${cd.others}\n`;
+                csvContent += `--- 第${g}局 拍數與得分分佈 ---\n`;
+                csvContent += "拍數,拉吊,突擊,反擊,強攻,送分,失分\n";
+                this.rallies.forEach(r => {
+                    const rd = this.gameData[g].rally[r.key] || {};
+                    csvContent += `${r.label},${rd.pull_score},${rd.rush_score},${rd.counter_score},${rd.attack_score},${rd.opponent_give},${rd.loss}\n`;
+                });
                 csvContent += "\n";
+
+                csvContent += `--- 第${g}局 診斷失誤技術細分 ---\n`;
+                csvContent += "技術項目,非受迫-打出界,非受迫-打下網,非受迫-判斷失誤,受迫-丟失重心,受迫-節奏不對,受迫-配速不對\n";
+                this.techRows.forEach(t => {
+                    const td = this.gameData[g].tech[t.key] || {};
+                    const cellAllowedUnforced = this.isCellAllowed(t.key, 'unforced');
+                    const cellAllowedForced = this.isCellAllowed(t.key, 'forced');
+
+                    const out = cellAllowedUnforced ? (td.out || 0) : '—';
+                    const net = cellAllowedUnforced ? (td.net || 0) : '—';
+                    const judge = cellAllowedUnforced ? (td.judge || 0) : '—';
+                    const balance = cellAllowedForced ? (td.balance || 0) : '—';
+                    const rhythm = cellAllowedForced ? (td.rhythm || 0) : '—';
+                    const speed = cellAllowedForced ? (td.speed || 0) : '—';
+
+                    csvContent += `${t.label},${out},${net},${judge},${balance},${rhythm},${speed}\n`;
+                });
+                csvContent += "\n";
+
+                csvContent += `--- 第${g}局 專項模組數據 ---\n`;
+                const bh = this.gameData[g].backhand || {};
+                csvContent += `反手後場,非受迫-出界,${bh.out || 0},非受迫-下網,${bh.net || 0},非受迫-質量差,${bh.quality_poor || 0},受迫-被調動,${bh.be_moved || 0},受迫-被快壓,${bh.be_pressed || 0},受迫-其他,${bh.others || 0}\n`;
+                
+                const ct = this.gameData[g].countered || {};
+                csvContent += `被反擊原因,球速太慢,${ct.speed_slow || 0},時機不對,${ct.timing_bad || 0},弧度不夠,${ct.arc_low || 0},球路不對,${ct.route_bad || 0},質量太差,${ct.quality_poor || 0},其他,${ct.others || 0}\n`;
+                
+                const fl = this.gameData[g].fault || {};
+                csvContent += `違例失分,${fl.count || 0}\n\n`;
             });
 
-            csvContent += "\n====================================================================\n\n";
-            csvContent += `[工作表 2 - 臨場操作流水日誌]\n`;
-            csvContent += `操作流水記錄\n`;
-            if(this.actionLogs.length === 0) {
-                csvContent += `暫無流水日誌操作紀錄\n`;
-            } else {
-                this.actionLogs.forEach(log => {
-                    csvContent += `[${log.realTime}] （${log.rally}）${log.desc} （${log.scoreAfter}）\n`;
-                });
-            }
+            // 輸出流水日誌
+            csvContent += "--- 臨場操作流水日誌 ---\n";
+            csvContent += "紀錄時間,局數與拍數,操作內容,當前比分\n";
+            this.actionLogs.forEach(log => {
+                csvContent += `"${log.realTime}","${log.rally}","${log.desc}","${log.scoreAfter}"\n`;
+            });
 
-            let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            let link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute("download", `羽球臨場統計v0.3.3_${this.matchInfo.date}.csv`);
-            document.body.appendChild(link); 
-            link.click(); 
-            document.body.removeChild(link);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const fileName = `羽球臨場數據_${this.matchInfo.date}_${this.matchInfo.playerA}_VS_${this.matchInfo.playerB}.csv`;
+            
+            if (navigator.msSaveBlob) { // IE 10+
+                navigator.msSaveBlob(blob, fileName);
+            } else {
+                link.href = URL.createObjectURL(blob);
+                link.setAttribute("download", fileName);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
         }
     }
 });
 </script>
+
 </body>
 </html>
