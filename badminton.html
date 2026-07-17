@@ -3,66 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>羽球臨場統計表 (自適應模塊化版)</title>
+    <title>羽球臨場統計表 v0.3.2</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <style>
         /* ==========================================================================
            【全域與各模塊參數自訂區】
-           您只需要在此處修改數值，即可完美控制各個區塊的字體大小與顏色！
            ========================================================================== */
         :root {
-            /* --- 1. 全域樣式與邊框 --- */
-            --border-color: #000000;       /* 邊框顏色 (預設黑色) */
-            --border-width: 1.5px;         /* 邊框粗細 */
-            --global-font-size: 11px;      /* 全域預設基礎字體大小 */
+            --border-color: #000000;       
+            --border-width: 1.5px;         
+            --global-font-size: 11px;      
 
-            /* --- 2. 核心主題色彩 --- */
-            --primary-yellow: #FFDE4D;     /* 主題黃色 (頁首背景、控制按鈕等) */
-            --dark-blue: #1E3A8A;          /* 己方/藍色標題背景 */
-            --light-blue: #93C5FD;         /* 輔助藍色 */
-            --light-green: #86EFAC;        /* 輔助綠色 */
-            --skin-color: #F5C2A2;         /* 拍數欄位膚色背景 */
-            --orange-badge: #FB923C;       /* 橘色統計徽章背景 */
-            --disabled-gray: #E5E7EB;      /* 禁用單元格灰色背景 */
+            --primary-yellow: #FFDE4D;     
+            --dark-blue: #1E3A8A;          
+            --light-blue: #93C5FD;         
+            --light-green: #86EFAC;        
+            --skin-color: #F5C2A2;         
+            --orange-badge: #FB923C;       
+            --disabled-gray: #E5E7EB;      
 
-            /* --- 3. 頂部頁首區 (Top Banner) 字體 --- */
-            --header-font-size: 12px;      /* 頁首文字與選手輸入框字體大小 */
-            --header-date-size: 11px;      /* 📅 日期文字大小 (專為安卓優化，防截斷) */
-
-            /* --- 4. 左上：局數切換面板 (Game Board) 字體與數字 --- */
-            --game-label-size: 12px;       /* 「第一局、第二局、局數」等文字大小 */
-            --game-score-size: 20px;       /* ⚡ 藍色與紅色「即時比分數字」大小 ⚡ */
-
-            /* --- 5. 右上：多拍面板 (Rally Board) 字體與數字 --- */
-            --rally-header-size: 12px;     /* 表格首行（拉吊、突擊等標題）字體大小 */
-            --rally-label-size: 12px;      /* 左側「5↓、6-10...」拍數標籤字體大小 */
-            --rally-score-size: 14px;      /* ⚡ 多拍得分與黃色失分「數據數字」大小 ⚡ */
-
-            /* --- 6. 下方：診斷失誤面板 (Error Board) 字體與數字 --- */
-            --error-header-size: 10px;     /* 「非受迫性失誤、打出界、打下網」等標題字體大小 */
-            --error-label-size: 10.5px;    /* 左側技術動作「發球、放網、挑球...」字體大小 */
-            --error-score-size: 12px;      /* ⚡ 失誤表格內部的「數據數字」大小 ⚡ */
-
-            /* --- 7. 下方：被反擊獨立面板 (Counter Board) 字體與數字 --- */
-            --counter-label-size: 10.5px;  /* 「被反擊、球速太慢、弧度不夠...」標籤字體大小 */
-            --counter-score-size: 11px;    /* ⚡ 被反擊括號內「數據數字」大小 ⚡ */
-
-            /* --- 8. 底部控制與提示欄 (Footer Control) 字體 --- */
-            --footer-hint-size: 11px;      /* 黑色提示列字體大小 */
-            --footer-btn-size: 12px;       /* 底部控制按鈕（+1模式、導出、重置）字體大小 */
+            --header-font-size: 12px;      
+            --header-date-size: 11px;      
+            --game-label-size: 12px;       
+            --game-score-size: 20px;       
+            --rally-header-size: 12px;     
+            --rally-label-size: 12px;      
+            --rally-score-size: 14px;      
+            --error-header-size: 10px;     
+            --error-label-size: 10.5px;    
+            --error-score-size: 12px;      
+            --counter-label-size: 10.5px;  
+            --counter-score-size: 11px;    
+            --footer-hint-bar-size: 11px;  
+            --footer-btn-size: 12px;       
         }
 
-        /* ==========================================================================
-           【系統底層配置 (不建議輕易變動)】
-           ========================================================================== */
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
             background-color: #F9FAFB;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             overflow: hidden;
+            user-select: none; 
         }
 
-        /* 主彈性容器 */
         .main-container {
             display: flex; 
             flex-direction: column;
@@ -71,6 +54,7 @@
             box-sizing: border-box; 
             padding: 4px; 
             gap: 4px;     
+            position: relative;
         }
 
         /* ==========================================
@@ -89,46 +73,17 @@
             border-radius: 4px;
         }
 
-        /* 📅 安卓相容日期輸入框 */
-        .date-picker-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 2px;
-        }
+        .date-picker-wrapper { display: flex; align-items: center; gap: 2px; }
         .date-picker-wrapper input[type="date"] {
-            border: none; 
-            background: transparent; 
-            font-weight: bold; 
-            font-size: var(--header-date-size);
-            font-family: inherit;
-            color: #000000;
-            padding: 0;
-            margin: 0;
-            min-width: 95px; 
-            width: auto;
-            cursor: pointer;
-            outline: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
+            border: none; background: transparent; font-weight: bold; font-size: var(--header-date-size);
+            font-family: inherit; color: #000000; padding: 0; margin: 0; min-width: 95px; width: auto;
+            cursor: pointer; outline: none; -webkit-appearance: none; appearance: none;
         }
-        .date-picker-wrapper input[type="date"]::-webkit-clear-button { display: none; }
-        .date-picker-wrapper input[type="date"]::-webkit-inner-spin-button { display: none; }
-        .date-picker-wrapper input[type="date"]::-webkit-calendar-picker-indicator {
-            margin-left: 2px;
-            padding: 0;
-            cursor: pointer;
-        }
+        .date-picker-wrapper input[type="date"]::-webkit-calendar-picker-indicator { margin-left: 2px; cursor: pointer; }
 
-        /* 選手名字輸入框 */
         .player-inputs input {
-            border: none; 
-            border-bottom: 1px solid #000; 
-            background: transparent;
-            text-align: center; 
-            font-weight: bold; 
-            width: 75px; 
-            font-size: var(--header-font-size);
+            border: none; border-bottom: 1px solid #000; background: transparent;
+            text-align: center; font-weight: bold; width: 75px; font-size: var(--header-font-size);
         }
         .player-inputs input:focus { outline: none; }
 
@@ -136,229 +91,146 @@
            【自適應工作區與比例分配】
            ========================================== */
         .workspace-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            min-height: 0; 
+            flex: 1; display: flex; flex-direction: column; gap: 4px; min-height: 0; 
         }
 
-        /* --- 【上部工作區】比例佔 1 --- */
-        .workspace-top {
-            flex: 1; 
-            display: flex; 
-            gap: 4px; 
-            width: 100%;
-            min-height: 0;
-        }
+        .workspace-top { flex: 1; display: flex; gap: 4px; width: 100%; min-height: 0; }
         
-        /* ==========================================
-           【2. 左上：局數切換面板 (Game Board)】
-           ========================================== */
+        /* 左上：局數切換面板 (為日誌容器提供定位基準) */
+        .left-panel-wrapper {
+            width: 32%;
+            position: relative;
+            height: 100%;
+        }
         .score-switch-panel { 
-            width: 32%; 
-            border: var(--border-width) solid var(--border-color); 
-            background: #FFF;
-            height: 100%;
-            overflow-y: auto; 
-        }
-        .score-switch-panel td {
-            font-size: var(--game-label-size); /* 局數面板文字大小 */
-        }
-        /* ⚡ 局數面板專屬比分數字樣式 ⚡ */
-        .score-switch-panel .score-num-blue {
-            color: blue;
-            font-weight: bold;
-            font-size: var(--game-score-size);
-        }
-        .score-switch-panel .score-num-red {
-            color: red;
-            font-weight: bold;
-            font-size: var(--game-score-size);
-        }
-
-        /* ==========================================
-           【3. 右上：多拍面板 (Rally Board)】
-           ========================================== */
-        .right-panel { 
-            width: 68%; 
-            border: var(--border-width) solid var(--border-color); 
-            background: #FFF;
-            height: 100%;
-            overflow-y: auto; 
-        }
-        /* 表頭 row 高度與字體 */
-        .rally-header-row td {
-            font-size: var(--rally-header-size);
-        }
-        /* 左側拍數標籤列 */
-        .rally-label-cell {
-            font-size: var(--rally-label-size) !important;
-        }
-        /* ⚡ 多拍面板內部得分/失分數字 ⚡ */
-        .rally-score-cell {
-            font-size: var(--rally-score-size) !important;
-        }
-
-        /* --- 【下部工作區】比例佔 2 --- */
-        .workspace-bottom {
-            flex: 2; 
-            display: flex; 
-            flex-direction: column; 
-            border: var(--border-width) solid var(--border-color); 
-            background: #FFF; 
-            min-height: 0;
-        }
-        
-        /* 診斷區表格外層 */
-        .matrix-scroll-wrapper {
-            width: 100%;
-            flex: 1;
-            overflow-y: auto; 
-        }
-
-        /* ==========================================
-           【4. 下方：診斷失誤面板 (Error Board)】
-           ========================================== */
-        .error-header-row td {
-            font-size: var(--error-header-size);
-        }
-        .error-label-cell {
-            font-size: var(--error-label-size) !important;
-        }
-        /* ⚡ 失誤面板內數據數字 ⚡ */
-        .error-score-cell {
-            font-size: var(--error-score-size) !important;
-        }
-
-        /* ==========================================
-           【5. 下方：被反擊獨立面板 (Counter Board)】
-           ========================================== */
-        .countered-panel {
-            background: #F0F9FF; 
-            border-top: var(--border-width) solid var(--border-color);
-            flex-shrink: 0; 
-        }
-        .counter-label-cell {
-            font-size: var(--counter-label-size) !important;
-        }
-        /* ⚡ 被反擊數據數字 ⚡ */
-        .counter-score-num {
-            font-size: var(--counter-score-size);
-        }
-
-        /* ==========================================
-           【表格通用樣式與單元格色彩】
-           ========================================== */
-        table { 
             width: 100%; 
             height: 100%; 
-            border-collapse: collapse; 
-            table-layout: fixed; 
-        }
-        th, td { 
             border: var(--border-width) solid var(--border-color); 
-            text-align: center; 
-            vertical-align: middle; 
-            font-weight: bold; 
-            font-size: var(--global-font-size); /* 預設繼承全域字體 */
-            padding: 2px 1px; 
+            background: #FFF; 
+            overflow-y: auto; 
+            box-sizing: border-box;
         }
+        .score-switch-panel td { font-size: var(--game-label-size); }
+        .score-switch-panel .score-num-blue { color: blue; font-weight: bold; font-size: var(--game-score-size); }
+        .score-switch-panel .score-num-red { color: red; font-weight: bold; font-size: var(--game-score-size); }
+
+        /* 右上：多拍面板 */
+        .right-panel { width: 68%; border: var(--border-width) solid var(--border-color); background: #FFF; height: 100%; overflow-y: auto; }
+        .rally-header-row td { font-size: var(--rally-header-size); }
+        .rally-label-cell { font-size: var(--rally-label-size) !important; }
+        .rally-score-cell { font-size: var(--rally-score-size) !important; }
+
+        /* 下部工作區 */
+        .workspace-bottom { flex: 2; display: flex; flex-direction: column; border: var(--border-width) solid var(--border-color); background: #FFF; min-height: 0; }
+        .matrix-scroll-wrapper { width: 100%; flex: 1; overflow-y: auto; }
+
+        /* 下方：診斷失誤面板 */
+        .error-header-row td { font-size: var(--error-header-size); }
+        .error-label-cell { font-size: var(--error-label-size) !important; }
+        .error-score-cell { font-size: var(--error-score-size) !important; }
+
+        /* 下方：被反擊獨立面板 */
+        .countered-panel { background: #F0F9FF; border-top: var(--border-width) solid var(--border-color); flex-shrink: 0; }
+        .counter-label-cell { font-size: var(--counter-label-size) !important; }
+        .counter-score-num { font-size: var(--counter-score-size); }
+
+        /* 表格通用樣式 */
+        table { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; }
+        th, td { border: var(--border-width) solid var(--border-color); text-align: center; vertical-align: middle; font-weight: bold; font-size: var(--global-font-size); padding: 2px 1px; }
         
-        .clickable { cursor: pointer; user-select: none; }
-        .clickable:active { opacity: 0.6; }
+        .clickable { cursor: pointer; user-select: none; transition: background-color 0.05s ease; }
+        .clickable:active { background-color: rgba(0, 0, 0, 0.15) !important; }
 
         .bg-dark-blue { background-color: #2563EB; color: #FFF; }   
         .bg-dark-red  { background-color: #DC2626; color: #FFF; }   
         .bg-skin      { background-color: var(--skin-color); color: #000; } 
         .bg-yellow    { background-color: var(--primary-yellow); color: #000; } 
         .white-cell   { background-color: #FFF; font-weight: normal; } 
-        
-        .disabled-cell { 
-            background-color: var(--disabled-gray); 
-            color: #9CA3AF; 
-            cursor: not-allowed; 
-            font-weight: normal; 
-        }
+        .disabled-cell { background-color: var(--disabled-gray); color: #9CA3AF; cursor: not-allowed; font-weight: normal; }
 
-        /* A、B總數小徽章 */
-        .badge {
-            background: var(--orange-badge); 
-            color: #FFF; 
-            font-size: 9px; 
-            padding: 0px 2px; 
-            border-radius: 3px; 
-            font-weight: normal; 
-            display: inline-block;
-        }
-
-        /* 內嵌式違例按鈕 */
-        .inline-fault-btn {
-            background: #EF4444; 
-            color: white; 
-            border: 1px solid #000; 
-            border-radius: 3px;
-            padding: 1px 2px; 
-            font-size: 10px; 
-            font-weight: bold; 
-            cursor: pointer;
-            margin-top: 2px; 
-            display: inline-block; 
-            width: 92%; 
-            box-sizing: border-box;
-        }
+        .badge { background: var(--orange-badge); color: #FFF; font-size: 9px; padding: 0px 2px; border-radius: 3px; font-weight: normal; display: inline-block; }
+        .inline-fault-btn { background: #EF4444; color: white; border: 1px solid #000; border-radius: 3px; padding: 1px 2px; font-size: 10px; font-weight: bold; cursor: pointer; margin-top: 2px; display: inline-block; width: 92%; box-sizing: border-box; }
         .inline-fault-btn:active { background: #DC2626; }
         .fault-count-tag { color: #FFF; font-weight: bold; background: rgba(0,0,0,0.2); padding: 0 2px; border-radius: 2px; }
 
-        /* 鎖定等待原因時的動畫閃爍 */
         .waiting-pulse-add { animation: pulse-add 0.8s infinite; background-color: #EF4444 !important; color: #FFF !important; }
         .waiting-pulse-sub { animation: pulse-sub 0.8s infinite; background-color: #3B82F6 !important; color: #FFF !important; }
         @keyframes pulse-add { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
         @keyframes pulse-sub { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 
+        /* ==========================================================================
+           【覆蓋型日誌面板樣式（完全等同紅框位置大小）】
+           ========================================================================== */
+        .embedded-log-window {
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            z-index: 90;
+            background: #F3F4F6; 
+            border: var(--border-width) solid var(--border-color); 
+            box-sizing: border-box;
+            display: flex; 
+            flex-direction: column;
+        }
+        .embedded-log-header {
+            background: #1F2937; 
+            color: #FFF; 
+            padding: 2px 6px;
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            font-weight: bold; 
+            font-size: 11px;
+            flex-shrink: 0;
+            height: 18px;
+            box-sizing: border-box;
+        }
+        .embedded-log-list { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 3px; 
+            font-family: monospace; 
+            font-size: 10px; 
+            -webkit-overflow-scrolling: touch; 
+            box-sizing: border-box;
+        }
+        .embedded-log-item { 
+            margin-bottom: 3px; 
+            line-height: 1.3; 
+            color: #111827; 
+            border-bottom: 1px dashed #D1D5DB; 
+            padding-bottom: 2px; 
+            word-break: break-all; 
+        }
+
         /* ==========================================
            【6. 頁尾控制與提示區】
            ========================================== */
         .footer-hint-bar {
-            flex-shrink: 0; 
-            background: #000; 
-            color: #FFF; 
-            text-align: center; 
-            font-size: var(--footer-hint-size); 
-            height: 22px; 
-            line-height: 22px; 
-            font-weight: bold; 
+            flex-shrink: 0; background: #000; color: #FFF; text-align: center; 
+            font-size: var(--footer-hint-bar-size); height: 22px; line-height: 22px; font-weight: bold; 
         }
         .footer-control-bar {
-            flex-shrink: 0; 
-            height: 40px; 
-            display: flex; 
-            gap: 4px; 
+            flex-shrink: 0; height: 40px; display: flex; gap: 4px; 
             padding-bottom: calc(4px + env(safe-area-inset-bottom)); 
         }
         .control-btn {
-            flex: 1; 
-            border: var(--border-width) solid var(--border-color); 
-            background: var(--primary-yellow);
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-            font-weight: bold; 
-            font-size: var(--footer-btn-size); 
-            cursor: pointer; 
-            border-radius: 4px; 
-            text-align: center;
+            flex: 1; border: var(--border-width) solid var(--border-color); 
+            background: var(--primary-yellow); display: flex; align-items: center; 
+            justify-content: center; font-weight: bold; font-size: var(--footer-btn-size); 
+            cursor: pointer; border-radius: 4px; text-align: center; transition: background-color 0.1s ease;
         }
-        .control-btn.active {
-            background: #000 !important; 
-            color: var(--primary-yellow) !important;
-        }
+        .control-btn.active { background: #000 !important; color: var(--primary-yellow) !important; }
+        .control-btn.mode-sub-active { background: #EF4444 !important; color: #FFF !important; }
     </style>
 </head>
 <body>
 
 <div id="app" class="main-container">
     
+    <!-- 頂部資訊列 -->
     <div class="top-banner">
         <div class="date-picker-wrapper">
             📅 <input type="date" v-model="matchInfo.date">
@@ -370,24 +242,44 @@
         </div>
     </div>
 
+    <!-- 工作區 -->
     <div class="workspace-container">
-        
         <div class="workspace-top">
-            <div class="score-switch-panel">
-                <table>
-                    <tr style="height: 18px; background: #1F2937; color: #FFF;">
-                        <td style="width: 40%;">局數</td>
-                        <td class="bg-dark-blue">已方</td>
-                        <td class="bg-dark-red">對方</td>
-                    </tr>
-                    <tr v-for="g in [1,2,3]" :key="g" style="height: 22px;">
-                        <td class="clickable" :class="{'bg-yellow': currentGame === g}" @click="switchGame(g)">第{{g === 1 ? '一' : g === 2 ? '二' : '三'}}局</td>
-                        <td class="white-cell score-num-blue">{{ gameScores['g'+g].win }}</td>
-                        <td class="white-cell score-num-red">{{ gameScores['g'+g].loss }}</td>
-                    </tr>
-                </table>
+            
+            <!-- 左上定位容器（內含實時比分區與日誌小窗） -->
+            <div class="left-panel-wrapper">
+                <!-- 實時比分與局數切換面板 -->
+                <div class="score-switch-panel">
+                    <table>
+                        <tr style="height: 18px; background: #1F2937; color: #FFF;">
+                            <td style="width: 40%;">局數</td>
+                            <td class="bg-dark-blue">己方</td>
+                            <td class="bg-dark-red">對方</td>
+                        </tr>
+                        <tr v-for="g in [1,2,3]" :key="g" style="height: 22px;">
+                            <td class="clickable" :class="{'bg-yellow': currentGame === g}" @click="switchGame(g)">第{{g === 1 ? '一' : g === 2 ? '二' : '三'}}局</td>
+                            <td class="white-cell score-num-blue">{{ gameScores['g'+g].win }}</td>
+                            <td class="white-cell score-num-red">{{ gameScores['g'+g].loss }}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- 📜 嵌入式操作日誌視窗（預設隱藏，與紅框大小位置完全相等） -->
+                <div v-if="showLogWindow" class="embedded-log-window">
+                    <div class="embedded-log-header">
+                        <span>📜 臨場流水日誌</span>
+                        <span class="window-close" style="cursor:pointer; font-weight:bold;" @click="showLogWindow = false">×</span>
+                    </div>
+                    <div class="embedded-log-list" ref="logContainer">
+                        <div v-if="actionLogs.length === 0" style="color: #9CA3AF; text-align: center; padding-top: 20px;">暫無紀錄</div>
+                        <div v-for="(log, idx) in actionLogs" :key="idx" class="embedded-log-item">
+                            [{{ log.realTime }}] ({{ log.rally }}) {{ log.desc }} ({{ log.scoreAfter }})
+                        </div>
+                    </div>
+                </div>
             </div>
 
+            <!-- 右上：多拍面板 -->
             <div class="right-panel">
                 <table>
                     <tr class="bg-skin rally-header-row" style="height: 18px;">
@@ -412,7 +304,7 @@
                                 'waiting-pulse-add': waitingForReason && waitingRallyKey === rally.key && opMode === 'add',
                                 'waiting-pulse-sub': waitingForReason && waitingRallyKey === rally.key && opMode === 'sub'
                             }"
-                            @click="triggerLoss(rallyKey = rally.key)">
+                            @click="triggerLoss(rally.key)">
                             {{ rallyData[rally.key].loss }}
                         </td>
                     </tr>
@@ -420,6 +312,7 @@
             </div>
         </div>
 
+        <!-- 下部工作區 -->
         <div class="workspace-bottom">
             <div class="matrix-scroll-wrapper">
                 <table>
@@ -449,6 +342,7 @@
                     <tr v-for="tech in techRows" :key="tech.key" style="height: 22px;">
                         <td class="bg-yellow error-label-cell">{{ tech.label }}</td>
                         
+                        <!-- 點擊綁定與狀態過濾 -->
                         <td v-if="isCellAllowed(tech.key, 'unforced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'out')">{{ techData[tech.key].out }}</td>
                         <td v-else class="disabled-cell">—</td>
 
@@ -464,12 +358,13 @@
                         <td v-if="isCellAllowed(tech.key, 'forced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'rhythm')">{{ techData[tech.key].rhythm }}</td>
                         <td v-else class="disabled-cell">—</td>
 
-                        <td v-if="isCellAllowed(tech.key, 'forced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'speed')" :key="tech.key">{{ techData[tech.key].speed }}</td>
+                        <td v-if="isCellAllowed(tech.key, 'forced')" class="white-cell clickable error-score-cell" @click="handleReasonClick(tech.key, 'speed')">{{ techData[tech.key].speed }}</td>
                         <td v-else class="disabled-cell">—</td>
                     </tr>
                 </table>
             </div>
 
+            <!-- 被反擊獨立面板 -->
             <div class="countered-panel">
                 <table>
                     <tr style="height: 26px;">
@@ -481,34 +376,57 @@
                 </table>
             </div>
         </div>
-
     </div>
 
+    <!-- 狀態提示列 -->
     <div class="footer-hint-bar">
-        <span v-if="waitingForReason" style="color: var(--primary-yellow);">➔ 鎖定成功！請點選原因格、『被反擊原因』或『違例』</span>
-        <span v-else style="color: #9CA3AF;">點擊黃色失分格 ➔ 再點擊下方原因或違例登記</span>
+        <span v-if="waitingForReason" style="color: var(--primary-yellow);">➔ 鎖定成功！請點選下方具體原因成因、被反擊或違例進行登記</span>
+        <span v-else-if="opMode === 'sub'" style="color: #FCA5A5;">⚠️ 當前為【-1 模式】，點擊儲存格將扣減數據</span>
+        <span v-else style="color: #9CA3AF;">點擊加得分，點擊黃色失分格鎖定後再選成因登記</span>
     </div>
 
+    <!-- 底部控制按鈕列 -->
     <div class="footer-control-bar">
-        <div class="control-btn" :class="{active: opMode === 'add'}" @click="changeMode('add')">+1 模式</div>
-        <div class="control-btn" :class="{active: opMode === 'sub'}" @click="changeMode('sub')">-1 模式</div>
+        <!-- 1. 操作日誌 -->
+        <div class="control-btn" :class="{active: showLogWindow}" @click="showLogWindow = !showLogWindow">操作日誌</div>
+        
+        <!-- 2. +1/-1 合併按鈕 -->
+        <div class="control-btn" :class="{'mode-sub-active': opMode === 'sub', active: opMode === 'add'}" @click="toggleAddSubMode">
+            {{ opMode === 'sub' ? '-1 模式' : '+1 模式' }}
+        </div>
+        
+        <!-- 3. 撤銷按鈕 -->
+        <div class="control-btn" style="background: #F3F4F6;" @click="handleUndo">撤銷</div>
+        
+        <!-- 4. 改數值按鈕 -->
         <div class="control-btn" :class="{active: opMode === 'edit'}" @click="changeMode('edit')">改數值</div>
+        
+        <!-- 5. 導出按鈕 -->
         <div class="control-btn" style="background: #10B981; color: #FFF;" @click="exportCSV">導出CSV</div>
+        
+        <!-- 6. 重置本局按鈕 -->
         <div class="control-btn" style="background: #EF4444; color: #FFF;" @click="clearData">重置本局</div>
     </div>
 
 </div>
 
 <script>
+const STORAGE_KEY = 'badminton_stat_sheet_v3_2';
+
 new Vue({
     el: '#app',
     data() {
         return {
             currentGame: 1,
-            opMode: 'add',
+            opMode: 'add', // add, sub, edit
             waitingForReason: false,
             waitingRallyKey: null,
             matchInfo: { date: new Date().toISOString().split('T')[0], playerA: '', playerB: '' },
+            
+            showLogWindow: false,
+            actionLogs: [], 
+            undoStack: [],  
+
             rallies: [
                 { key: 'under5', label: '5↓' },
                 { key: '6to10', label: '6-10' },
@@ -544,11 +462,17 @@ new Vue({
             }
         }
     },
+    watch: {
+        gameData: { deep: true, handler() { this.saveToLocalStorage(); } },
+        matchInfo: { deep: true, handler() { this.saveToLocalStorage(); } },
+        actionLogs() { this.saveToLocalStorage(); }
+    },
     computed: {
         rallyData() { return this.gameData[this.currentGame].rally; },
         techData() { return this.gameData[this.currentGame].tech; },
         counteredData() { return this.gameData[this.currentGame].countered; },
         faultData() { return this.gameData[this.currentGame].fault; },
+        
         totalUnforced() {
             let sum = 0;
             this.techRows.forEach(t => {
@@ -588,127 +512,302 @@ new Vue({
             this.techRows.forEach(t => { Vue.set(this.gameData[g].tech, t.key, { out: 0, net: 0, judge: 0, balance: 0, rhythm: 0, speed: 0 }); });
             this.counteredTypes.forEach(c => { Vue.set(this.gameData[g].countered, c.key, 0); });
         });
+        this.loadFromLocalStorage();
     },
     methods: {
+        // 🎯 核心過濾邏輯更新：新增發球與接發球只能在 5↓ 拍數被啟用的條件
         isCellAllowed(techKey, type) {
+            // 原有固定限制：發球/殺球沒有受迫性，接殺沒有非受迫性
             if ((techKey === 'serve' || techKey === 'smash') && type === 'forced') return false;
             if (techKey === 'block_smash' && type === 'unforced') return false;
+            
+            // 新增限制：在正常登記模式下（有選定失分拍時），發球與接發球只能在 5↓ ('under5') 拍數中選擇
+            if (this.waitingForReason && (techKey === 'serve' || techKey === 'receive')) {
+                if (this.waitingRallyKey !== 'under5') {
+                    return false;
+                }
+            }
             return true;
         },
         switchGame(gNum) { this.currentGame = gNum; this.waitingForReason = false; },
         changeMode(mode) { this.opMode = mode; this.waitingForReason = false; },
-        handleScore(rallyKey, field) {
-            if (this.opMode === 'edit') {
-                let val = prompt("修改數值:", this.rallyData[rallyKey][field]);
-                if (val !== null) this.rallyData[rallyKey][field] = parseInt(val) || 0;
+        
+        toggleAddSubMode() {
+            this.opMode = (this.opMode === 'add') ? 'sub' : 'add';
+            this.waitingForReason = false;
+        },
+
+        pushUndoSnapshot() {
+            if (this.undoStack.length > 50) this.undoStack.shift(); 
+            this.undoStack.push(JSON.stringify({
+                gameData: this.gameData,
+                logs: this.actionLogs
+            }));
+        },
+
+        handleUndo() {
+            if (this.undoStack.length === 0) {
+                alert("目前沒有更早的歷史操作紀錄可以撤銷。");
                 return;
             }
-            let amt = this.opMode === 'add' ? 1 : -1;
-            this.rallyData[rallyKey][field] = Math.max(0, this.rallyData[rallyKey][field] + amt);
+            const snap = JSON.parse(this.undoStack.pop());
+            const previousState = snap.gameData;
+            
+            [1, 2, 3].forEach(g => {
+                if (previousState[g]) {
+                    Object.assign(this.gameData[g].rally, previousState[g].rally);
+                    Object.assign(this.gameData[g].tech, previousState[g].tech);
+                    Object.assign(this.gameData[g].countered, previousState[g].countered);
+                    Object.assign(this.gameData[g].fault, previousState[g].fault);
+                }
+            });
+            
+            this.actionLogs = snap.logs;
+            this.waitingForReason = false;
         },
-        triggerLoss(rallyKey) {
+
+        getRealSystemTime() {
+            const now = new Date();
+            const hh = now.getHours().toString().padStart(2, '0');
+            const mm = now.getMinutes().toString().padStart(2, '0');
+            const ss = now.getSeconds().toString().padStart(2, '0');
+            return `${hh}:${mm}:${ss}`;
+        },
+
+        pushLog(rallyLabel, description) {
+            const scoreStr = `${this.gameScores['g' + this.currentGame].win}:${this.gameScores['g' + this.currentGame].loss}`;
+            this.actionLogs.push({
+                realTime: this.getRealSystemTime(),
+                rally: rallyLabel,
+                desc: description,
+                scoreAfter: scoreStr
+            });
+            this.$nextTick(() => {
+                const container = this.$refs.logContainer;
+                if (container) container.scrollTop = container.scrollHeight;
+            });
+        },
+
+        handleScore(rallyKey, field) {
+            const rallyLabel = this.rallies.find(r => r.key === rallyKey).label;
+            const fieldLabels = { pull_score:'拉吊得分', rush_score:'突擊得分', counter_score:'反擊得分', attack_score:'強攻得分', opponent_give:'對手送分' };
+
             if (this.opMode === 'edit') {
-                let val = prompt("修改失分值:", this.rallyData[rallyKey].loss);
-                if (val !== null) this.rallyData[rallyKey].loss = parseInt(val) || 0;
+                let val = prompt(`修改 [${rallyLabel}] ${fieldLabels[field]} 數值:`, this.rallyData[rallyKey][field]);
+                if (val !== null) {
+                    this.pushUndoSnapshot();
+                    this.rallyData[rallyKey][field] = parseInt(val) || 0;
+                    this.pushLog(rallyLabel, `${fieldLabels[field]}手動修改為 ${val}`);
+                }
+                return;
+            }
+
+            this.pushUndoSnapshot();
+            let amt = this.opMode === 'add' ? 1 : -1;
+            const oldVal = this.rallyData[rallyKey][field];
+            this.rallyData[rallyKey][field] = Math.max(0, this.rallyData[rallyKey][field] + amt);
+            
+            if (this.rallyData[rallyKey][field] !== oldVal) {
+                this.pushLog(rallyLabel, `${fieldLabels[field]}${amt > 0 ? '+1' : '-1'}`);
+            }
+        },
+
+        triggerLoss(rallyKey) {
+            const rallyLabel = this.rallies.find(r => r.key === rallyKey).label;
+            if (this.opMode === 'edit') {
+                let val = prompt(`修改 [${rallyLabel}] 失分總數:`, this.rallyData[rallyKey].loss);
+                if (val !== null) {
+                    this.pushUndoSnapshot();
+                    this.rallyData[rallyKey].loss = parseInt(val) || 0;
+                    this.pushLog(rallyLabel, `失分手動修改為 ${val}`);
+                }
                 return;
             }
             this.waitingForReason = true;
             this.waitingRallyKey = rallyKey;
+            this.showLogWindow = true;
         },
+
         handleReasonClick(techKey, field) {
+            const rallyLabel = this.rallies.find(r => r.key === this.waitingRallyKey).label;
+            const techLabel = this.techRows.find(t => t.key === techKey).label;
+            const typeLabels = { out:'（打出界）', net:'（打下網）', judge:'（判斷失誤）', balance:'（丟失重心）', rhythm:'（節奏不對）', speed:'（配速不對）' };
+
             if (this.opMode === 'edit') {
-                let val = prompt("修改次數:", this.techData[techKey][field]);
-                if (val !== null) this.techData[techKey][field] = parseInt(val) || 0;
+                let val = prompt(`修改 [${techLabel}] ${typeLabels[field]} 次數:`, this.techData[techKey][field]);
+                if (val !== null) {
+                    this.pushUndoSnapshot();
+                    this.techData[techKey][field] = parseInt(val) || 0;
+                    this.pushLog(rallyLabel, `手動修改 [${techLabel}]${typeLabels[field]} 為 ${val}`);
+                }
                 return;
             }
 
             if (this.waitingForReason) {
+                this.pushUndoSnapshot();
                 if (this.opMode === 'add') {
                     this.rallyData[this.waitingRallyKey].loss += 1;
                     this.techData[techKey][field] += 1;
+                    this.pushLog(rallyLabel, `${techLabel}${typeLabels[field]}`);
                 } else if (this.opMode === 'sub') {
                     if (this.techData[techKey][field] > 0 && this.rallyData[this.waitingRallyKey].loss > 0) {
                         this.rallyData[this.waitingRallyKey].loss -= 1;
                         this.techData[techKey][field] -= 1;
+                        this.pushLog(rallyLabel, `扣減：${techLabel}${typeLabels[field]}`);
+                    } else {
+                        alert("扣減失敗：該項細分登記已為 0。");
                     }
                 }
                 this.waitingForReason = false;
                 this.waitingRallyKey = null;
             }
         },
+
         handleCounteredClick(field) {
+            const cLabel = this.counteredTypes.find(c => c.key === field).label;
             if (this.opMode === 'edit') {
-                let val = prompt("修改被反擊次數:", this.counteredData[field]);
-                if (val !== null) this.counteredData[field] = parseInt(val) || 0;
+                let val = prompt(`修改 被反擊-[${cLabel}] 次數:`, this.counteredData[field]);
+                if (val !== null) {
+                    this.pushUndoSnapshot();
+                    this.counteredData[field] = parseInt(val) || 0;
+                    this.pushLog('無', `手動修改 被反擊-[${cLabel}] 為 ${val}`);
+                }
                 return;
             }
 
             if (this.waitingForReason) {
+                this.pushUndoSnapshot();
+                const rallyLabel = this.rallies.find(r => r.key === this.waitingRallyKey).label;
                 if (this.opMode === 'add') {
                     this.rallyData[this.waitingRallyKey].loss += 1;
                     this.counteredData[field] += 1;
+                    this.pushLog(rallyLabel, `被反擊（${cLabel}）`);
                 } else if (this.opMode === 'sub') {
                     if (this.counteredData[field] > 0 && this.rallyData[this.waitingRallyKey].loss > 0) {
                         this.rallyData[this.waitingRallyKey].loss -= 1;
                         this.counteredData[field] -= 1;
+                        this.pushLog(rallyLabel, `扣減：被反擊（${cLabel}）`);
+                    } else {
+                        alert("扣減失敗：該反擊成因數據已為 0。");
                     }
                 }
                 this.waitingForReason = false;
                 this.waitingRallyKey = null;
             } else {
-                alert("請先點擊上方多拍面板中的黃色『失分』格，再點選下方被反擊成因！");
+                alert("操作提示：請先點擊上方多拍面板中的黃色『失分』格鎖定拍數，再點選下方被反擊成因！");
             }
         },
+
         handleFaultClick() {
             if (this.opMode === 'edit') {
                 let val = prompt("修改違例次數:", this.faultData.count);
-                if (val !== null) this.faultData.count = parseInt(val) || 0;
+                if (val !== null) {
+                    this.pushUndoSnapshot();
+                    this.faultData.count = parseInt(val) || 0;
+                    this.pushLog('無', `手動修改 違例次數為 ${val}`);
+                }
                 return;
             }
 
             if (this.waitingForReason) {
+                this.pushUndoSnapshot();
+                const rallyLabel = this.rallies.find(r => r.key === this.waitingRallyKey).label;
                 if (this.opMode === 'add') {
                     this.rallyData[this.waitingRallyKey].loss += 1;
                     this.faultData.count += 1;
+                    this.pushLog(rallyLabel, `違例失分`);
                 } else if (this.opMode === 'sub') {
                     if (this.faultData.count > 0 && this.rallyData[this.waitingRallyKey].loss > 0) {
                         this.rallyData[this.waitingRallyKey].loss -= 1;
                         this.faultData.count -= 1;
+                        this.pushLog(rallyLabel, `扣減：違例失分`);
+                    } else {
+                        alert("扣減失敗：違例次數已為 0。");
                     }
                 }
                 this.waitingForReason = false;
                 this.waitingRallyKey = null;
             } else {
-                alert("請先點擊上方多拍面板中的黃色『失分』格，再點擊違例按鈕！");
+                alert("操作提示：請先點擊上方多拍面板中的黃色『失分』格鎖定拍數，再點擊違例按鈕！");
             }
         },
+
         clearData() {
-            if (confirm("確定重置當前局數據？")) {
+            if (confirm("確定重置當前局數據？此操作將同時清空當前局的流水日誌，且無法還原。")) {
+                this.pushUndoSnapshot();
                 this.rallies.forEach(r => { this.gameData[this.currentGame].rally[r.key] = { pull_score: 0, rush_score: 0, counter_score: 0, attack_score: 0, opponent_give: 0, loss: 0 }; });
                 this.techRows.forEach(t => { this.gameData[this.currentGame].tech[t.key] = { out: 0, net: 0, judge: 0, balance: 0, rhythm: 0, speed: 0 }; });
                 this.counteredTypes.forEach(c => { this.counteredData[c.key] = 0; });
                 this.faultData.count = 0;
+                this.actionLogs = []; 
                 this.waitingForReason = false;
             }
         },
+
+        saveToLocalStorage() {
+            try {
+                const dataToSave = { matchInfo: this.matchInfo, gameData: this.gameData, actionLogs: this.actionLogs };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+            } catch (e) { console.error(e); }
+        },
+        loadFromLocalStorage() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed.matchInfo) this.matchInfo = parsed.matchInfo;
+                    if (parsed.actionLogs) this.actionLogs = parsed.actionLogs;
+                    if (parsed.gameData) {
+                        [1, 2, 3].forEach(g => {
+                            if (parsed.gameData[g]) {
+                                const src = parsed.gameData[g];
+                                if (src.rally) Object.assign(this.gameData[g].rally, src.rally);
+                                if (src.tech) Object.assign(this.gameData[g].tech, src.tech);
+                                if (src.countered) Object.assign(this.gameData[g].countered, src.countered);
+                                if (src.fault) Object.assign(this.gameData[g].fault, src.fault);
+                            }
+                        });
+                    }
+                }
+            } catch (e) { console.error(e); }
+        },
+
         exportCSV() {
-            let csvContent = "\uFEFF";
-            csvContent += `日期,${this.matchInfo.date},選手A,${this.matchInfo.playerA || '未填'},選手B,${this.matchInfo.playerB || '未填'}\n\n`;
+            let csvContent = "\uFEFF"; 
+            csvContent += `[工作表 1 - 核心技術統計數據]\n`;
+            csvContent += `比賽日期,${this.matchInfo.date},選手A,${this.matchInfo.playerA || '未填'},選手B,${this.matchInfo.playerB || '未填'}\n\n`;
+            
             [1, 2, 3].forEach(g => {
                 csvContent += `--- 第 ${g} 局 ---\n多拍能力,拉吊得分,突擊得分,反擊得分,強攻得分,對手送分,失分(丟分)\n`;
                 this.rallies.forEach(r => { let d = this.gameData[g].rally[r.key]; csvContent += `${r.label},${d.pull_score},${d.rush_score},${d.counter_score},${d.attack_score},${d.opponent_give},${d.loss}\n`; });
-                csvContent += `\n違例得分總計,${this.gameData[g].fault.count}\n`;
+                csvContent += `違例得分總計,${this.gameData[g].fault.count}\n`;
+                
                 csvContent += "\n技術類型,非受迫-打出界,非受迫-打下網,非受迫-判斷失誤,受迫-丟失重心,受迫-節奏不對,受迫-配速不對\n";
                 this.techRows.forEach(t => { let d = this.gameData[g].tech[t.key]; csvContent += `${t.label},${d.out},${d.net},${d.judge},${d.balance},${d.rhythm},${d.speed}\n`; });
+                
                 let cd = this.gameData[g].countered;
-                csvContent += `\n背反擊成因,球速太慢,${cd.speed_slow},弧度不夠,${cd.arc_low},時機不對,${cd.timing_bad},質量太差,${cd.quality_poor},幸運球,${cd.lucky_shot},其他,${cd.others}\n`;
-                csvContent += "\n\n";
+                csvContent += `Ref被反擊成因,球速太慢,${cd.speed_slow},弧度不夠,${cd.arc_low},時機不對,${cd.timing_bad},質量太差,${cd.quality_poor},幸運球,${cd.lucky_shot},其他,${cd.others}\n`;
+                csvContent += "\n";
             });
+
+            csvContent += "\n====================================================================\n\n";
+            csvContent += `[工作表 2 - 臨場操作流水日誌]\n`;
+            csvContent += `操作流水記錄\n`;
+            if(this.actionLogs.length === 0) {
+                csvContent += `暫無流水日誌操作紀錄\n`;
+            } else {
+                this.actionLogs.forEach(log => {
+                    csvContent += `[${log.realTime}] （${log.rally}）${log.desc} （${log.scoreAfter}）\n`;
+                });
+            }
+
             let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             let link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.setAttribute("download", `羽球臨場統計_${this.matchInfo.date}.csv`);
-            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            link.setAttribute("download", `羽球臨場統計v0.3.2_${this.matchInfo.date}.csv`);
+            document.body.appendChild(link); 
+            link.click(); 
+            document.body.removeChild(link);
         }
     }
 });
