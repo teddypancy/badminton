@@ -10,35 +10,38 @@
            【全域與各模塊參數自訂區】
            ========================================================================== */
         :root {
-            --border-color: #000000;       
-            --border-width: 1.5px;         
-            --global-font-size: 11px;      
+            /* 全域線條與字體大小配置 */
+            --border-color: #000000;       /* 全域邊框顏色 */
+            --border-width: 1.5px;         /* 全域邊框粗細 */
+            --global-font-size: 11px;      /* 全域基礎字體大小 */
 
-            --primary-yellow: #FFDE4D;     
+            /* 色彩管理配置 */
+            --primary-yellow: #FFDE4D;     /* 主色調：黃色 */
             --dark-blue: #1E3A8A;          
             --light-blue: #93C5FD;         
             --light-green: #86EFAC;        
-            --skin-color: #F5C2A2;         
-            --orange-badge: #FB923C;       
-            --disabled-gray: #E5E7EB;      
+            --skin-color: #F5C2A2;         /* 膚色：底色背景 */
+            --orange-badge: #FB923C;       /* 橘色：提示標籤 */
+            --disabled-gray: #E5E7EB;      /* 灰色：不可用儲存格 */
 
             /* 非受迫/受迫底色 */
-            --unforced-bg: #E0F2FE; /* 淺藍底色 */
-            --forced-bg: #DCFCE7;   /* 淺綠底色 */
+            --unforced-bg: #E0F2FE;        /* 淺藍底色 */
+            --forced-bg: #DCFCE7;          /* 淺綠底色 */
 
-            --header-font-size: 12px;      
-            --header-date-size: 11px;      
-            --game-label-size: 12px;       
-            --game-score-size: 20px;       
+            /* 各個 UI 模塊字體大小獨立控制 */
+            --header-font-size: 12px;      /* 頁首選手與局數名稱字體大小 */
+            --header-date-size: 11px;      /* 頁首日期選取器字體大小 */
+            --game-label-size: 12px;       /* 局數切換標籤字體大小 */
+            --game-score-size: 20px;       /* 局數實時比分字體大小 */
             --rally-header-size: 12px;     
-            --rally-label-size: 12px;      
-            --rally-score-size: 14px;      
+            --rally-label-size: 12px;      /* 多拍面板拍數標籤字體大小 */
+            --rally-score-size: 14px;      /* 多拍面板得分數值字體大小 */
             --error-header-size: 10px;     
-            --error-label-size: 10.5px;    
-            --error-score-size: 10px;      
+            --error-label-size: 11px;    /* 診斷面板技術項目標籤字體大小 */
+            --error-score-size: 11px;      /* 診斷面板失誤數值字體大小 */
             --counter-label-size: 10.5px;  
             --counter-score-size: 11px;    
-            --footer-btn-size: 10px;       
+            --footer-btn-size: 12px;       /* 頁尾控制按鈕字體大小 */
         }
 
         html, body {
@@ -353,7 +356,6 @@
                     <div class="embedded-log-list" ref="logContainer">
                         <div v-if="currentActionLogs.length === 0" style="color: #9CA3AF; text-align: center; padding-top: 20px;">暫無紀錄</div>
                         <div v-for="(log, idx) in currentActionLogs" :key="idx" class="embedded-log-item">
-                            <!-- 根據格式類型進行動態渲染 -->
                             <template v-if="log.formatType === 'standard'">
                                 [{{ log.realTime }}]&nbsp;&nbsp;({{ log.rally }})&nbsp;&nbsp;{{ log.desc }}&nbsp;&nbsp;[{{ log.scoreAfter }}]
                             </template>
@@ -452,7 +454,7 @@
                         <td v-else class="disabled-cell">—</td>
                     </tr>
 
-                    <!-- 2. 反手後場（非受迫性已開放使用，底色淺藍，全部皆為獨立按鈕） -->
+                    <!-- 2. 反手後場 -->
                     <tr style="height: 28px;">
                         <td class="bg-skin error-label-cell">反手後場</td>
                         <!-- 非受迫 (淺藍) -->
@@ -519,7 +521,7 @@
                         
                         <!-- 狀態說明合併格（點擊標題按鈕觸開操作說明彈窗） -->
                         <td colspan="3" class="status-cell">
-                            <button type="button" class="help-trigger-btn" @click="showHelpModal = true">💡操作指南 </button>
+                            <button type="button" class="help-trigger-btn" @click="showHelpModal = true">💡操作指南</button>
                             <div style="color: #FFF; font-size: 10px;">{{ statusTip }}</div>
                         </td>
                     </tr>
@@ -571,24 +573,13 @@
 
     <!-- 底部控制按鈕列 -->
     <div class="footer-control-bar">
-        <!-- 1. 操作日誌 -->
         <div class="control-btn" :class="{active: showLogWindow}" @click="showLogWindow = !showLogWindow">操作日誌</div>
-        
-        <!-- 2. +1/-1 合併按鈕 -->
         <div class="control-btn" :class="{'mode-sub-active': opMode === 'sub', active: opMode === 'add'}" @click="toggleAddSubMode">
             {{ opMode === 'sub' ? '-1 模式' : '+1 模式' }}
         </div>
-        
-        <!-- 3. 撤銷按鈕 -->
         <div class="control-btn" style="background: #F3F4F6;" @click="handleUndo">撤銷</div>
-        
-        <!-- 4. 改數值按鈕 -->
         <div class="control-btn" :class="{active: opMode === 'edit'}" @click="changeMode('edit')">改數值</div>
-        
-        <!-- 5. 導出按鈕 -->
         <div class="control-btn" style="background: #10B981; color: #FFF;" @click="exportCSV">導出數據</div>
-        
-        <!-- 6. 重置本局按鈕 -->
         <div class="control-btn" style="background: #EF4444; color: #FFF;" @click="clearData">清空數據</div>
     </div>
 
@@ -602,19 +593,15 @@ new Vue({
     data() {
         return {
             currentGame: 1,
-            opMode: 'add', // add, sub, edit
+            opMode: 'add', 
             waitingForReason: false,
             waitingRallyKey: null,
             matchInfo: { date: new Date().toISOString().split('T')[0], playerA: '', playerB: '' },
             
             showLogWindow: false,
-            showHelpModal: false, // 控制操作說明指南彈窗的顯示狀態
+            showHelpModal: false, 
             
-            actionLogs: {
-                1: [],
-                2: [],
-                3: []
-            }, 
+            actionLogs: { 1: [], 2: [], 3: [] }, 
             undoStack: [],  
 
             rallies: [
@@ -663,15 +650,9 @@ new Vue({
         currentActionLogs() { return this.actionLogs[this.currentGame] || []; },
         
         statusTip() {
-            if (this.waitingForReason) {
-                return "➔ 鎖定成功！請點選下方具體技術、反手或被反擊原因登記。";
-            }
-            if (this.opMode === 'sub') {
-                return "⚠️ 當前為【-1 模式】，點擊任意單元格將執行扣減。";
-            }
-            if (this.opMode === 'edit') {
-                return "✏️ 當前為【改數值模式】，點擊格可直接輸入數值修改。";
-            }
+            if (this.waitingForReason) return "➔ 鎖定成功！請點選下方具體技術、反手或被反擊原因登記。";
+            if (this.opMode === 'sub') return "⚠️ 當前為【-1 模式】，點擊任意單元格將執行扣減。";
+            if (this.opMode === 'edit') return "✏️ 當前為【改數值模式】，點擊格可直接輸入數值修改。";
             return "點擊加得分；點擊黃色失分格鎖定拍數後，再選下方原因成因登記。";
         },
 
@@ -679,9 +660,7 @@ new Vue({
             let sum = 0;
             this.techRows.forEach(t => {
                 let d = this.techData[t.key] || {};
-                if(this.isCellAllowed(t.key, 'unforced')) {
-                    sum += (d.out || 0) + (d.net || 0) + (d.judge || 0);
-                }
+                if(this.isCellAllowed(t.key, 'unforced')) sum += (d.out || 0) + (d.net || 0) + (d.judge || 0);
             });
             sum += (this.backhandData.out || 0) + (this.backhandData.net || 0) + (this.backhandData.quality_poor || 0);
             Object.keys(this.counteredMap).forEach(k => { sum += (this.counteredData[k] || 0); });
@@ -691,9 +670,7 @@ new Vue({
             let sum = 0;
             this.techRows.forEach(t => {
                 let d = this.techData[t.key] || {};
-                if(this.isCellAllowed(t.key, 'forced')) {
-                    sum += (d.balance || 0) + (d.rhythm || 0) + (d.speed || 0);
-                }
+                if(this.isCellAllowed(t.key, 'forced')) sum += (d.balance || 0) + (d.rhythm || 0) + (d.speed || 0);
             });
             sum += (this.backhandData.be_moved || 0) + (this.backhandData.be_pressed || 0) + (this.backhandData.others || 0);
             return sum;
@@ -737,10 +714,7 @@ new Vue({
         },
 
         handleUndo() {
-            if (this.undoStack.length === 0) {
-                alert("目前沒有更早的歷史操作紀錄可以撤銷。");
-                return;
-            }
+            if (this.undoStack.length === 0) { alert("目前沒有更早的歷史操作紀錄可以撤銷。"); return; }
             if (confirm("確定要撤銷上一步操作嗎？")) {
                 const snap = JSON.parse(this.undoStack.pop());
                 const previousState = snap.gameData;
@@ -753,11 +727,8 @@ new Vue({
                         Object.assign(this.gameData[g].fault, previousState[g].fault);
                     }
                 });
-                if (snap.actionLogs) {
-                    Object.keys(snap.actionLogs).forEach(g => { this.actionLogs[g] = snap.actionLogs[g]; });
-                }
-                this.waitingForReason = false;
-                this.waitingRallyKey = null;
+                if (snap.actionLogs) { Object.keys(snap.actionLogs).forEach(g => { this.actionLogs[g] = snap.actionLogs[g]; }); }
+                this.waitingForReason = false; this.waitingRallyKey = null;
             }
         },
 
@@ -765,8 +736,7 @@ new Vue({
             this.pushUndoSnapshot();
             const currentVal = this.rallyData[rallyKey][scoreType];
             const typeLabel = { pull_score: '拉吊得分', rush_score: '突擊得分', counter_score: '反擊得分', attack_score: '強攻得分', opponent_give: '送分得分' }[scoreType] || scoreType;
-            const rallyObj = this.rallies.find(r => r.key === rallyKey);
-            const rallyLabel = rallyObj ? rallyObj.label : '未知拍';
+            const rallyLabel = this.rallies.find(r => r.key === rallyKey)?.label || '未知拍';
 
             if (this.opMode === 'edit') {
                 const input = prompt(`請輸入新的數值 (當前: ${currentVal})`, currentVal);
@@ -775,8 +745,7 @@ new Vue({
                     this.rallyData[rallyKey][scoreType] = newVal;
                     this.addLog(rallyKey, `（${rallyLabel} ${typeLabel} 改 ${newVal}）`, 'custom');
                 }
-                this.opMode = 'add';
-                return;
+                this.opMode = 'add'; return;
             }
 
             const change = (this.opMode === 'sub') ? -1 : 1;
@@ -784,17 +753,12 @@ new Vue({
             if (targetVal < 0) return;
 
             this.rallyData[rallyKey][scoreType] = targetVal;
-            if (change > 0) {
-                this.addLog(rallyKey, `${typeLabel}得分+1`, 'standard');
-            } else {
-                this.addLog(rallyKey, `（${rallyLabel} ${typeLabel} -1）`, 'custom');
-            }
+            if (change > 0) { this.addLog(rallyKey, `${typeLabel}得分+1`, 'standard'); } 
+            else { this.addLog(rallyKey, `（${rallyLabel} ${typeLabel} -1）`, 'custom'); }
         },
 
         triggerLoss(rallyKey) {
-            const rallyObj = this.rallies.find(r => r.key === rallyKey);
-            const rallyLabel = rallyObj ? rallyObj.label : '未知拍';
-
+            const rallyLabel = this.rallies.find(r => r.key === rallyKey)?.label || '未知拍';
             if (this.opMode === 'edit') {
                 const currentVal = this.rallyData[rallyKey].loss;
                 const input = prompt(`請輸入新的失分數值 (當前: ${currentVal})`, currentVal);
@@ -804,21 +768,16 @@ new Vue({
                     this.rallyData[rallyKey].loss = newVal;
                     this.addLog(rallyKey, `（${rallyLabel} 失分 改 ${newVal}）`, 'custom');
                 }
-                this.opMode = 'add';
-                return;
+                this.opMode = 'add'; return;
             }
             this.waitingRallyKey = rallyKey;
             this.waitingForReason = true;
         },
 
         handleReasonClick(techKey, reasonKey) {
-            if (!this.waitingForReason) {
-                alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。");
-                return;
-            }
+            if (!this.waitingForReason) { alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。"); return; }
             const isForced = ['balance', 'rhythm', 'speed'].includes(reasonKey);
-            const typeStr = isForced ? 'forced' : 'unforced';
-            if (!this.isCellAllowed(techKey, typeStr)) return;
+            if (!this.isCellAllowed(techKey, isForced ? 'forced' : 'unforced')) return;
 
             this.pushUndoSnapshot();
             const change = (this.opMode === 'sub') ? -1 : 1;
@@ -833,23 +792,15 @@ new Vue({
 
             const techLabel = this.techRows.find(t => t.key === techKey)?.label || techKey;
             const reasonLabel = { out: '打出界', net: '打下網', judge: '判斷失誤', balance: '丟失重心', rhythm: '節奏不對', speed: '配速不對' }[reasonKey];
-            const rallyObj = this.rallies.find(r => r.key === this.waitingRallyKey);
-            const rallyLabel = rallyObj ? rallyObj.label : '未知拍';
+            const rallyLabel = this.rallies.find(r => r.key === this.waitingRallyKey)?.label || '未知拍';
 
-            if (change > 0) {
-                this.addLog(this.waitingRallyKey, `${techLabel}（${reasonLabel}）`, 'standard');
-            } else {
-                this.addLog(this.waitingRallyKey, `（${rallyLabel} ${techLabel}${reasonLabel} -1）`, 'custom');
-            }
-            this.waitingForReason = false;
-            this.waitingRallyKey = null;
+            if (change > 0) { this.addLog(this.waitingRallyKey, `${techLabel}（${reasonLabel}）`, 'standard'); } 
+            else { this.addLog(this.waitingRallyKey, `（${rallyLabel} ${techLabel}${reasonLabel} -1）`, 'custom'); }
+            this.waitingForReason = false; this.waitingRallyKey = null;
         },
 
         handleBackhandDirectClick(field) {
-            if (!this.waitingForReason) {
-                alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。");
-                return;
-            }
+            if (!this.waitingForReason) { alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。"); return; }
             this.pushUndoSnapshot();
             const change = (this.opMode === 'sub') ? -1 : 1;
             const currentLoss = this.rallyData[this.waitingRallyKey].loss;
@@ -862,23 +813,15 @@ new Vue({
             this.rallyData[this.waitingRallyKey].loss = currentLoss + change;
 
             const fieldLabel = { out: '打出界', net: '打下網', quality_poor: '質量太差', be_moved: '被調動', be_pressed: '被快壓', others: '其他' }[field];
-            const rallyObj = this.rallies.find(r => r.key === this.waitingRallyKey);
-            const rallyLabel = rallyObj ? rallyObj.label : '未知拍';
+            const rallyLabel = this.rallies.find(r => r.key === this.waitingRallyKey)?.label || '未知拍';
 
-            if (change > 0) {
-                this.addLog(this.waitingRallyKey, `反手後場（${fieldLabel}）`, 'standard');
-            } else {
-                this.addLog(this.waitingRallyKey, `（${rallyLabel} 反手後場${fieldLabel} -1）`, 'custom');
-            }
-            this.waitingForReason = false;
-            this.waitingRallyKey = null;
+            if (change > 0) { this.addLog(this.waitingRallyKey, `反手後場（${fieldLabel}）`, 'standard'); } 
+            else { this.addLog(this.waitingRallyKey, `（${rallyLabel} 反手後場${fieldLabel} -1）`, 'custom'); }
+            this.waitingForReason = false; this.waitingRallyKey = null;
         },
 
         handleCounteredDirectClick(field) {
-            if (!this.waitingForReason) {
-                alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。");
-                return;
-            }
+            if (!this.waitingForReason) { alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。"); return; }
             this.pushUndoSnapshot();
             const change = (this.opMode === 'sub') ? -1 : 1;
             const currentLoss = this.rallyData[this.waitingRallyKey].loss;
@@ -891,23 +834,15 @@ new Vue({
             this.rallyData[this.waitingRallyKey].loss = currentLoss + change;
 
             const fieldLabel = this.counteredMap[field];
-            const rallyObj = this.rallies.find(r => r.key === this.waitingRallyKey);
-            const rallyLabel = rallyObj ? rallyObj.label : '未知拍';
+            const rallyLabel = this.rallies.find(r => r.key === this.waitingRallyKey)?.label || '未知拍';
 
-            if (change > 0) {
-                this.addLog(this.waitingRallyKey, `被反擊（${fieldLabel}）`, 'standard');
-            } else {
-                this.addLog(this.waitingRallyKey, `（${rallyLabel} 被反擊${fieldLabel} -1）`, 'custom');
-            }
-            this.waitingForReason = false;
-            this.waitingRallyKey = null;
+            if (change > 0) { this.addLog(this.waitingRallyKey, `被反擊（${fieldLabel}）`, 'standard'); } 
+            else { this.addLog(this.waitingRallyKey, `（${rallyLabel} 被反擊${fieldLabel} -1）`, 'custom'); }
+            this.waitingForReason = false; this.waitingRallyKey = null;
         },
 
         handleFaultClick() {
-            if (!this.waitingForReason) {
-                alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。");
-                return;
-            }
+            if (!this.waitingForReason) { alert("請先點選上方黃色的【失分】單元格鎖定拍數，再行登記失誤成因。"); return; }
             this.pushUndoSnapshot();
             const change = (this.opMode === 'sub') ? -1 : 1;
             const currentLoss = this.rallyData[this.waitingRallyKey].loss;
@@ -918,89 +853,66 @@ new Vue({
 
             this.faultData.count = currentFaultVal + change;
             this.rallyData[this.waitingRallyKey].loss = currentLoss + change;
+            const rallyLabel = this.rallies.find(r => r.key === this.waitingRallyKey)?.label || '未知拍';
 
-            const rallyObj = this.rallies.find(r => r.key === this.waitingRallyKey);
-            const rallyLabel = rallyObj ? rallyObj.label : '未知拍';
-
-            if (change > 0) {
-                this.addLog(this.waitingRallyKey, `違例`, 'standard');
-            } else {
-                this.addLog(this.waitingRallyKey, `（${rallyLabel} 違例 -1）`, 'custom');
-            }
-            this.waitingForReason = false;
-            this.waitingRallyKey = null;
+            if (change > 0) { this.addLog(this.waitingRallyKey, `違例`, 'standard'); } 
+            else { this.addLog(this.waitingRallyKey, `（${rallyLabel} 違例 -1）`, 'custom'); }
+            this.waitingForReason = false; this.waitingRallyKey = null;
         },
 
         addLog(rallyKey, description, formatType = 'standard') {
             const now = new Date();
             const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-            const rallyObj = this.rallies.find(r => r.key === rallyKey);
+            const rallyLabel = this.rallies.find(r => r.key === rallyKey)?.label || '未知拍';
             const scoreObj = this.gameScores['g' + this.currentGame];
-            const rallyLabel = rallyObj ? rallyObj.label : '未知拍';
             
             this.actionLogs[this.currentGame].push({
-                realTime: timeStr,
-                rally: rallyLabel,
-                desc: description,
-                scoreAfter: `${scoreObj.win}:${scoreObj.loss}`,
-                formatType: formatType
+                realTime: timeStr, rally: rallyLabel, desc: description,
+                scoreAfter: `${scoreObj.win}:${scoreObj.loss}`, formatType: formatType
             });
 
             this.$nextTick(() => {
-                if (this.$refs.logContainer) {
-                    this.$refs.logContainer.scrollTop = this.$refs.logContainer.scrollHeight;
-                }
+                if (this.$refs.logContainer) this.$refs.logContainer.scrollTop = this.$refs.logContainer.scrollHeight;
             });
         },
 
         saveToLocalStorage() {
-            const dataToSave = { gameData: this.gameData, matchInfo: this.matchInfo, actionLogs: this.actionLogs };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ gameData: this.gameData, matchInfo: this.matchInfo, actionLogs: this.actionLogs }));
         },
 
         loadFromLocalStorage() {
             const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    if (parsed.gameData) {
-                        Object.keys(parsed.gameData).forEach(g => {
-                            if (this.gameData[g]) {
-                                Object.assign(this.gameData[g].rally, parsed.gameData[g].rally);
-                                Object.assign(this.gameData[g].tech, parsed.gameData[g].tech);
-                                if (parsed.gameData[g].backhand) Object.assign(this.gameData[g].backhand, parsed.gameData[g].backhand);
-                                if (parsed.gameData[g].countered) Object.assign(this.gameData[g].countered, parsed.gameData[g].countered);
-                                if (parsed.gameData[g].fault) Object.assign(this.gameData[g].fault, parsed.gameData[g].fault);
-                            }
-                        });
-                    }
-                    if (parsed.matchInfo) Object.assign(this.matchInfo, parsed.matchInfo);
-                    if (parsed.actionLogs) {
-                        if (Array.isArray(parsed.actionLogs)) {
-                            this.actionLogs = { 1: parsed.actionLogs, 2: [], 3: [] };
-                        } else {
-                            Object.assign(this.actionLogs, parsed.actionLogs);
+            if (!saved) return;
+            try {
+                const parsed = JSON.parse(saved);
+                if (parsed.gameData) {
+                    Object.keys(parsed.gameData).forEach(g => {
+                        if (this.gameData[g]) {
+                            Object.assign(this.gameData[g].rally, parsed.gameData[g].rally);
+                            Object.assign(this.gameData[g].tech, parsed.gameData[g].tech);
+                            if (parsed.gameData[g].backhand) Object.assign(this.gameData[g].backhand, parsed.gameData[g].backhand);
+                            if (parsed.gameData[g].countered) Object.assign(this.gameData[g].countered, parsed.gameData[g].countered);
+                            if (parsed.gameData[g].fault) Object.assign(this.gameData[g].fault, parsed.gameData[g].fault);
                         }
-                    }
-                } catch (e) {
-                    console.error("讀取本地快取失敗：", e);
+                    });
                 }
-            }
+                if (parsed.matchInfo) Object.assign(this.matchInfo, parsed.matchInfo);
+                if (parsed.actionLogs) {
+                    if (Array.isArray(parsed.actionLogs)) { this.actionLogs = { 1: parsed.actionLogs, 2: [], 3: [] }; } 
+                    else { Object.assign(this.actionLogs, parsed.actionLogs); }
+                }
+            } catch (e) { console.error("讀取本地快取失敗：", e); }
         },
 
         clearData() {
             if (confirm(`確定要清空第 ${this.currentGame} 局的所有統計數據與該局日誌嗎？此操作不可撤銷。`)) {
-                this.pushUndoSnapshot();
-                const g = this.currentGame;
+                this.pushUndoSnapshot(); const g = this.currentGame;
                 this.rallies.forEach(r => { this.gameData[g].rally[r.key] = { pull_score: 0, rush_score: 0, counter_score: 0, attack_score: 0, opponent_give: 0, loss: 0 }; });
                 this.techRows.forEach(t => { this.gameData[g].tech[t.key] = { out: 0, net: 0, judge: 0, balance: 0, rhythm: 0, speed: 0 }; });
                 this.gameData[g].backhand = { out: 0, net: 0, quality_poor: 0, be_moved: 0, be_pressed: 0, others: 0 };
                 Object.keys(this.counteredMap).forEach(k => { this.gameData[g].countered[k] = 0; });
-                this.gameData[g].fault = { count: 0 };
-                this.actionLogs[g] = [];
-                
-                this.waitingForReason = false;
-                this.waitingRallyKey = null;
+                this.gameData[g].fault = { count: 0 }; this.actionLogs[g] = [];
+                this.waitingForReason = false; this.waitingRallyKey = null;
                 alert(`第 ${g} 局數據與該局日誌已成功重置。`);
             }
         },
@@ -1023,35 +935,23 @@ new Vue({
                 csvContent += "技術項目,非受迫-打出界,非受迫-打下網,非受迫-判斷失誤,受迫-丟失重心,受迫-節奏不對,受迫-配速不對\n";
                 this.techRows.forEach(t => {
                     const td = this.gameData[g].tech[t.key] || {};
-                    const cellAllowedUnforced = this.isCellAllowed(t.key, 'unforced');
-                    const cellAllowedForced = this.isCellAllowed(t.key, 'forced');
-                    const out = cellAllowedUnforced ? (td.out || 0) : '—';
-                    const net = cellAllowedUnforced ? (td.net || 0) : '—';
-                    const judge = cellAllowedUnforced ? (td.judge || 0) : '—';
-                    const balance = cellAllowedForced ? (td.balance || 0) : '—';
-                    const rhythm = cellAllowedForced ? (td.rhythm || 0) : '—';
-                    const speed = cellAllowedForced ? (td.speed || 0) : '—';
-                    csvContent += `${t.label},${out},${net},${judge},${balance},${rhythm},${speed}\n`;
+                    const u = this.isCellAllowed(t.key, 'unforced'), f = this.isCellAllowed(t.key, 'forced');
+                    csvContent += `${t.label},${u?(td.out||0):'—'},${u?(td.net||0):'—'},${u?(td.judge||0):'—'},${f?(td.balance||0):'—'},${f?(td.rhythm||0):'—'},${f?(td.speed||0):'—'}\n`;
                 });
                 csvContent += "\n";
 
                 csvContent += `--- 第${g}局 專項模組數據 ---\n`;
                 const bh = this.gameData[g].backhand || {};
-                csvContent += `反手後場,非受迫-出界,${bh.out || 0},非受迫-下網,${bh.net || 0},非受迫-質量差,${bh.quality_poor || 0},受迫-被調動,${bh.be_moved || 0},受迫-被快壓,${bh.be_pressed || 0},受迫-其他,${bh.others || 0}\n`;
+                csvContent += `反手後場,非受迫-出界,${bh.out||0},非受迫-下網,${bh.net||0},非受迫-質量差,${bh.quality_poor||0},受迫-被調動,${bh.be_moved||0},受迫-被快壓,${bh.be_pressed||0},受迫-其他,${bh.others||0}\n`;
                 const ct = this.gameData[g].countered || {};
-                csvContent += `被反擊原因,球速太慢,${ct.speed_slow || 0},時機不對,${ct.timing_bad || 0},弧度不夠,${ct.arc_low || 0},球路不對,${ct.route_bad || 0},質量太差,${ct.quality_poor || 0},其他,${ct.others || 0}\n`;
-                const fl = this.gameData[g].fault || {};
-                csvContent += `違例失分,${fl.count || 0}\n\n`;
+                csvContent += `被反擊原因,球速太慢,${ct.speed_slow||0},時機不對,${ct.timing_bad||0},弧度不夠,${ct.arc_low||0},球路不對,${ct.route_bad||0},質量太差,${ct.quality_poor||0},其他,${ct.others||0}\n`;
+                csvContent += `違例失分,${(this.gameData[g].fault || {}).count || 0}\n\n`;
 
-                csvContent += `--- 第${g}局 日誌 ---\n`;
+                csvContent += `--- 第${g}局 操作日誌 ---\n`;
                 csvContent += "紀錄時間,局數與拍數,操作內容,當前比分\n";
-                const logsForGame = this.actionLogs[g] || [];
-                logsForGame.forEach(log => {
-                    if (log.formatType === 'standard') {
-                        csvContent += `"[${log.realTime}]","(${log.rally})","${log.desc}","[${log.scoreAfter}]"\n`;
-                    } else {
-                        csvContent += `"[${log.realTime}]","—","${log.desc}","—"\n`;
-                    }
+                (this.actionLogs[g] || []).forEach(log => {
+                    if (log.formatType === 'standard') { csvContent += `"[${log.realTime}]","(${log.rally})","${log.desc}","[${log.scoreAfter}]"\n`; } 
+                    else { csvContent += `"[${log.realTime}]","—","${log.desc}","—"\n`; }
                 });
                 csvContent += "\n";
             });
@@ -1059,15 +959,10 @@ new Vue({
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             const fileName = `羽球臨場數據_${this.matchInfo.date}_${this.matchInfo.playerA}_VS_${this.matchInfo.playerB}.csv`;
-            
-            if (navigator.msSaveBlob) { 
-                navigator.msSaveBlob(blob, fileName);
-            } else {
-                link.href = URL.createObjectURL(blob);
-                link.setAttribute("download", fileName);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+            if (navigator.msSaveBlob) { navigator.msSaveBlob(blob, fileName); } 
+            else {
+                link.href = URL.createObjectURL(blob); link.setAttribute("download", fileName);
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
             }
         }
     }
