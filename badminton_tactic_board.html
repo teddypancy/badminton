@@ -1,0 +1,2320 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>羽球戰術板 v4.84</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft JhengHei",sans-serif;color:#e6e6e6}
+body{background:#0a1929;overflow:hidden;height:100vh;width:100vw}
+
+/* 頂部工具列 */
+#topbar{position:fixed;top:0;left:0;right:0;height:48px;background:#0f2847;display:flex;align-items:center;padding:0 16px;gap:10px;z-index:100;border-bottom:1px solid #1e3a5f}
+#topbar .title{font-weight:bold;font-size:15px;color:#ffd54f;margin-right:8px}
+.btn{background:#1e3a5f;border:none;padding:6px 12px;border-radius:4px;font-size:13px;cursor:pointer;transition:background .2s;display:inline-flex;align-items:center;justify-content:center;user-select:none}
+.btn:hover{background:#2a4a73}
+.btn.active{background:#f57c00;color:#fff}
+.btn.warn{background:#e64a19;color:#fff}
+.btn.warn:hover{background:#c62828}
+.btn.ok{background:#2e7d32;color:#fff}
+.btn.ok:hover{background:#1b5e20}
+.btn.save{background:#1565c0;color:#fff}
+.btn.save:hover{background:#0d47a1}
+.sep{width:1px;height:24px;background:#2a4a73;margin:0 2px}
+
+/* HUD 狀態列 */
+#hud{position:fixed;top:10px;right:16px;background:rgba(15,40,71,.85);padding:4px 12px;border-radius:4px;font-size:12px;z-index:101;backdrop-filter:blur(4px);border:1px solid #1e3a5f;color:#ffd54f;pointer-events:none}
+
+/* 3D 容器 */
+#container3d{position:fixed;top:48px;left:0;right:0;bottom:0}
+
+/* 3D 右下角工具欄 */
+#integrated-toolbar{position:fixed;bottom:16px;right:16px;width:360px;background:rgba(15,40,71,.92);border:1px solid #1e3a5f;border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;z-index:95;box-shadow:0 4px 16px rgba(0,0,0,.4);backdrop-filter:blur(6px);transition:opacity .2s ease, transform .2s ease}
+#integrated-toolbar.hidden{display:none!important}
+.tb-row{display:flex;align-items:center;gap:6px;width:100%}
+.tb-row .row-label{font-size:11px;color:#90caf9;min-width:48px;flex-shrink:0}
+.tb-row .btn{padding:5px 8px;font-size:12px}
+.tb-row input[type="range"]{flex:1;cursor:pointer;accent-color:#f57c00}
+.tb-btn-group{display:flex;gap:3px;flex:1}
+.tb-btn-group .btn{flex:1;text-align:center;padding:4px 0;font-size:11px}
+
+/* 2D 抽屜 */
+#drawer2d{position:fixed;top:48px;left:0;right:0;bottom:0;background:#0a1929;transform:translateY(100%);transition:transform .3s ease;z-index:80;display:flex;flex-direction:column}
+#drawer2d.open{transform:translateY(0)}
+
+/* 2D 標題列 */
+#drawer-header{min-height:46px;height:auto;background:#0f2847;display:flex;align-items:center;padding:6px 16px;gap:12px;border-bottom:1px solid #1e3a5f;flex-shrink:0;flex-wrap:wrap}
+#drawer-header .mode-group{display:flex;gap:4px;flex-wrap:wrap}
+#drawer-header .mode-btn{background:#1e3a5f;border:none;padding:4px 10px;border-radius:3px;font-size:12px;cursor:pointer}
+#drawer-header .mode-btn.active{background:#f57c00;color:#fff}
+#drawer-header .right-tools{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* 模式切換按鈕組 */
+.app-mode-group{display:flex;background:#071422;padding:2px;border-radius:6px;border:1px solid #1e3a5f}
+.app-mode-btn{padding:4px 10px;font-size:12px;border:none;background:transparent;color:#90caf9;cursor:pointer;border-radius:4px;font-weight:bold}
+.app-mode-btn.active{background:#f57c00;color:#fff}
+
+/* 拍數控制欄 */
+#shot-controls-header{display:flex;align-items:center;gap:6px;background:#162b45;padding:3px 8px;border-radius:5px;border:1px solid #1e3a5f}
+#shot-controls-header .btn{padding:4px 8px;font-size:12px}
+#shot-info-text{font-size:12px;font-weight:bold;color:#ffd54f;min-width:55px;text-align:center;user-select:none}
+
+/* 自由模式塗鴉工具欄 */
+#free-draw-toolbar{display:none;align-items:center;gap:6px;background:#162b45;padding:3px 10px;border-radius:5px;border:1px solid #1e3a5f}
+#free-draw-toolbar.active{display:flex}
+.color-picker-dot{width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .1s}
+.color-picker-dot.active{border-color:#fff;transform:scale(1.2)}
+
+#drawer-body{flex:1;display:flex;overflow:hidden;position:relative}
+
+/* 2D 場地區域 */
+#court-wrap{flex:1;position:relative;background:#071422;display:flex;align-items:center;justify-content:center;padding:8px;overflow:hidden;min-width:250px}
+#court2d{background:#0a1929;cursor:grab;display:block;touch-action:none}
+#court2d:active{cursor:grabbing}
+
+/* 迷你選擇器小窗 */
+#mini-selector-popup{display:none;position:absolute;z-index:150;background:rgba(15,40,71,0.95);border:1px solid #ffd54f;border-radius:6px;padding:8px 10px;box-shadow:0 4px 16px rgba(0,0,0,0.6);backdrop-filter:blur(6px);min-width:160px;font-size:12px}
+#mini-popup-title{color:#ffd54f;font-weight:bold;font-size:11px;border-bottom:1px solid #1e3a5f;padding-bottom:4px;margin-bottom:6px}
+#mini-popup-options{display:flex;flex-direction:column;gap:4px}
+
+/* 可調節分割條 */
+#resizer-v{width:8px;background:#1e3a5f;cursor:col-resize;flex-shrink:0;transition:background .2s;z-index:85;display:flex;align-items:center;justify-content:center}
+#resizer-v:hover, #resizer-v.dragging{background:#f57c00}
+#resizer-v::after{content:'||';font-size:10px;color:#90caf9;letter-spacing:-2px}
+
+/* 右側控制面板排版 */
+#panel-wrap{width:380px;background:#0f2847;border-left:1px solid #1e3a5f;padding:10px 12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;overflow-x:hidden;flex-shrink:0;min-width:320px;transition:all .2s ease}
+#panel-wrap.hidden-panel{display:none!important}
+.panel-section{background:#162b45;border-radius:6px;padding:8px 10px}
+.panel-section h4{font-size:12px;margin-bottom:6px;color:#ffd54f;display:flex;justify-content:space-between;align-items:center}
+.param-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:11px}
+.param-row label{width:72px;color:#90caf9;flex-shrink:0}
+.param-btns{display:flex;gap:3px;flex:1;flex-wrap:wrap}
+.param-btns button{flex:1;background:#1e3a5f;border:none;padding:4px 0;border-radius:3px;font-size:11px;cursor:pointer;min-width:36px;color:#d0d0d0;transition:all .15s}
+.param-btns button:hover:not(:disabled){background:#2a4a73}
+.param-btns button.active{background:#f57c00;color:#fff;font-weight:bold}
+.param-btns button:disabled, .slider-container input[type="range"]:disabled, .slider-container .step-btn:disabled{opacity:0.3;cursor:not-allowed}
+
+.slider-container{display:flex;align-items:center;gap:4px;flex:1}
+.slider-container input[type="range"]{flex:1;accent-color:#f57c00;cursor:pointer}
+.slider-container .step-btn{background:#1e3a5f;border:1px solid #2a4a73;color:#ffd54f;padding:2px 8px;border-radius:3px;cursor:pointer;font-weight:bold;font-size:12px;user-select:none;transition:background 0.15s}
+.slider-container .step-btn:hover:not(:disabled){background:#f57c00;color:#fff}
+.slider-val{font-size:11px;color:#ffd54f;min-width:42px;text-align:right;font-weight:bold}
+
+/* 物理診斷與攔截警告框 */
+.physics-diag{padding:6px 8px;border-radius:4px;font-size:11px;line-height:1.4;margin-bottom:6px;border:1px solid transparent}
+.physics-diag.ok{background:rgba(46,125,50,0.2);border-color:#2e7d32;color:#81c784}
+.physics-diag.warn{background:rgba(230,74,25,0.2);border-color:#e64a19;color:#ff8a65}
+.physics-diag.intercept{background:rgba(255,152,0,0.2);border-color:#ff9800;color:#ffe082}
+
+/* Toast 提示條 */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(46,125,50,0.95);color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;z-index:200;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.4);backdrop-filter:blur(4px)}
+
+/* 通用下拉面板 */
+.popup-panel{position:fixed;top:56px;width:240px;max-height:60vh;background:rgba(15,40,71,.95);border-radius:6px;overflow:hidden;z-index:95;display:none;border:1px solid #1e3a5f;box-shadow:0 4px 12px rgba(0,0,0,0.5);display:flex;flex-direction:column}
+.popup-panel.open{display:flex!important}
+.popup-header{padding:8px 12px;background:#1e3a5f;font-size:13px;font-weight:bold;flex-shrink:0}
+.popup-list{overflow-y:auto;padding:8px;flex:1}
+.popup-item{padding:8px;font-size:12px;border-bottom:1px solid #1e3a5f;cursor:pointer;border-radius:3px;margin-bottom:4px}
+.popup-item:hover{background:#1e3a5f}
+.popup-item.current{background:#f57c00;color:#fff}
+
+.script-item-wrap{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e3a5f;margin-bottom:4px;background:#0d203a;border-radius:3px;overflow:hidden}
+.script-item-wrap .popup-item{flex:1;border-bottom:none;margin-bottom:0;border-radius:3px 0 0 3px}
+.script-action-btns{display:flex;align-items:center}
+.btn-edit-script, .btn-del-script{background:transparent;border:none;cursor:pointer;padding:8px 8px;font-size:13px;transition:background .2s}
+.btn-edit-script{color:#64b5f6}
+.btn-edit-script:hover{background:rgba(100,181,246,.2)}
+.btn-del-script{color:#e64a19;font-weight:bold}
+.btn-del-script:hover{background:rgba(230,74,25,.2)}
+.script-tools{display:flex;gap:4px;padding:8px;background:#162b45;border-bottom:1px solid #1e3a5f}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="title">羽球戰術板 v4.84</div>
+  <button class="btn" id="btn-drawer">2D 戰術板</button>
+  <button class="btn active" id="btn-toggle-tb">3D 工具欄</button>
+  <div class="sep"></div>
+  <button class="btn" id="btn-log">日誌</button>
+  <button class="btn" id="btn-scripts">腳本管理</button>
+</div>
+
+<div id="hud">單打回合 · 手動模式 · 共 0 拍</div>
+<div id="container3d"></div>
+
+<div id="integrated-toolbar">
+  <div class="tb-row">
+    <button class="btn" id="btn-play" style="flex:1">播放</button>
+    <button class="btn" id="btn-stop" style="flex:1">停止</button>
+    <button class="btn" id="btn-step" style="flex:1">單節</button>
+  </div>
+  <div class="tb-row">
+    <span class="row-label">進度</span>
+    <input type="range" id="timeline" min="0" max="100" value="0" step="0.1">
+  </div>
+  <div class="tb-row">
+    <span class="row-label">速度</span>
+    <div class="tb-btn-group">
+      <button class="btn speed-btn" data-speed="0.5">0.5x</button>
+      <button class="btn speed-btn active" data-speed="1">1x</button>
+      <button class="btn speed-btn" data-speed="1.5">1.5x</button>
+      <button class="btn speed-btn" data-speed="2">2x</button>
+    </div>
+  </div>
+  <div class="tb-row">
+    <span class="row-label">視角</span>
+    <div class="tb-btn-group">
+      <button class="btn view-btn" data-view="top">俯瞰</button>
+      <button class="btn view-btn" data-view="side">側視</button>
+      <button class="btn view-btn active" data-view="45">45°</button>
+      <button class="btn view-btn" data-view="high">高位</button>
+      <button class="btn view-btn" data-view="back">底線</button>
+    </div>
+  </div>
+</div>
+
+<div id="drawer2d">
+  <div id="drawer-header">
+    <div class="app-mode-group">
+      <button class="app-mode-btn active" data-appmode="manual">手動模式</button>
+      <button class="app-mode-btn" data-appmode="smart">智能模式</button>
+      <button class="app-mode-btn" data-appmode="free">自由模式</button>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="mode-group" id="court-mode-group">
+      <button class="mode-btn active" data-mode="singles">單打</button>
+      <button class="mode-btn" data-mode="doubles">雙打</button>
+      <button class="mode-btn" data-mode="2v1">2打1</button>
+      <button class="mode-btn" data-mode="3v1">3打1</button>
+    </div>
+    
+    <div class="right-tools">
+      <div id="free-draw-toolbar">
+        <button class="btn active" id="btn-draw-tool" data-tool="pencil">✏️ 畫筆</button>
+        <button class="btn" id="btn-select-tool" data-tool="select">✋ 選取</button>
+        <div class="sep"></div>
+        <div id="color-picker-list" style="display:flex;gap:4px;align-items:center;"></div>
+        <div class="sep"></div>
+        <button class="btn" id="btn-eraser-tool" data-tool="eraser">🧹 橡皮擦</button>
+        <button class="btn warn" id="btn-clear-draw">清空畫布</button>
+        <button class="btn" id="btn-undo-draw">撤銷畫筆</button>
+      </div>
+
+      <div id="shot-controls-header">
+        <button class="btn" id="btn-shot-prev">◀</button>
+        <span id="shot-info-text">0 / 0</span>
+        <button class="btn" id="btn-shot-next">▶</button>
+        <button class="btn ok" id="btn-add">+ 新增</button>
+        <button class="btn warn" id="btn-del">刪除</button>
+        <button class="btn" id="btn-undo">撤銷</button>
+        <button class="btn" id="btn-redo">復原</button>
+        <button class="btn save" id="btn-save">保存</button>
+      </div>
+      <button class="btn" id="btn-close-drawer">收起</button>
+    </div>
+  </div>
+  
+  <div id="drawer-body">
+    <div id="court-wrap">
+      <canvas id="court2d"></canvas>
+      <div id="mini-selector-popup">
+        <div id="mini-popup-title">選擇重疊物件</div>
+        <div id="mini-popup-options"></div>
+      </div>
+    </div>
+    <div id="resizer-v"></div>
+    <div id="panel-wrap">
+      <div class="panel-section" id="param-section">
+        <h4>戰術參數與物理診斷</h4>
+        <div id="param-content"><div style="font-size:12px;color:#666">載入中...</div></div>
+      </div>
+      <div class="panel-section" id="side-arc-section">
+        <h4>側視角軌跡預覽 ( Side Profile )</h4>
+        <canvas id="sideArcCanvas" style="width:100%; height:110px; background:#071422; border-radius:4px; border:1px solid #1e3a5f; display:block; margin-top:4px;"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast">戰術腳本已更新保存！</div>
+
+<div id="log-panel" class="popup-panel" style="right: 110px; display:none;">
+  <div class="popup-header">回合日誌</div>
+  <div id="log-list" class="popup-list"></div>
+</div>
+
+<div id="scripts-panel" class="popup-panel" style="right: 16px; width: 320px; display:none;">
+  <div class="popup-header" style="display:flex;justify-content:space-between;align-items:center;">
+    <span>腳本管理器</span>
+    <button class="btn ok" id="btn-new-script" style="padding:2px 8px;font-size:12px">+ 新增</button>
+  </div>
+  <div class="script-tools">
+    <button class="btn" id="btn-import-all" style="flex:1">📥 導入(JSON)</button>
+    <button class="btn" id="btn-export-all" style="flex:1">📤 導出全部</button>
+    <input type="file" id="file-import" accept=".json" style="display:none;">
+  </div>
+  <div id="scripts-list" class="popup-list"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.min.js"></script>
+
+<script>
+// ========== 羽球物理常數與規格 ==========
+const COURT = { 
+  length: 13.4, 
+  width_d: 6.1, 
+  width_s: 5.18, 
+  service_line: 1.98, 
+  double_back: 5.94, 
+  net_height: 1.55,
+  margin: 1.0,      
+  out_bound: 0.5    
+};
+
+const ARC_TYPES = {
+  high_arc: { name: '高球', desc: '高弧度：上升至落點上方後垂直下落', isPress: false },
+  mid_high_arc: { name: '平高球', desc: '平高弧度：標準羽球衰減拋物線', isPress: false },
+  low_flat_arc: { name: '平球', desc: '平球/低平球：平貼網頂快速過網拋物線', isPress: false },
+  fast_press: { name: '快壓', desc: '重殺：高擊球點下壓快速過網', isPress: true },
+  soft_press: { name: '輕壓', desc: '劈殺/劈吊：高擊球點中速前向下壓', isPress: true }
+};
+
+let scriptLibrary = [
+  { id: 'script_1', name: '預設戰術 1 (單打攻防v4.84版)', data: null }
+];
+let currentScriptId = 'script_1';
+
+let state = { 
+  appMode: 'manual', 
+  mode: 'singles', 
+  shots: [], 
+  currentShot: 0, 
+  playing: false, 
+  playSpeed: 1, 
+  selected: null, 
+  snapEnabled: true, 
+  snappedPlayer: null,
+  snappedType: null,
+  history: [], 
+  redoHistory: [],
+  freeDraw: {
+    tool: 'pencil', 
+    color: '#ff5252',
+    lineWidth: 3,
+    paths: [],
+    redoPaths: [],
+    currentPath: null
+  }
+};
+
+let animTime = 0;
+
+const DRAW_COLORS = ['#ff5252', '#2196f3', '#ffd54f', '#4caf50', '#ff9800', '#ab47bc', '#ffffff', '#00bcd4'];
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  setTimeout(() => { toast.style.display = 'none'; }, 2500);
+}
+
+function showMiniPopup(px, py, title, options) {
+  const popup = document.getElementById('mini-selector-popup');
+  const titleEl = document.getElementById('mini-popup-title');
+  const optionsEl = document.getElementById('mini-popup-options');
+  const courtWrap = document.getElementById('court-wrap');
+
+  titleEl.textContent = title;
+  optionsEl.innerHTML = '';
+
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.style.cssText = 'text-align:left; padding:6px 10px; font-size:11px; background:#1e3a5f; width:100%; border:1px solid #2a4a73; border-radius:4px; cursor:pointer; color:#e6e6e6; transition:background 0.2s;';
+    btn.onmouseover = () => btn.style.background = '#f57c00';
+    btn.onmouseout = () => btn.style.background = '#1e3a5f';
+    btn.textContent = opt.label;
+    btn.onclick = (ev) => {
+      ev.stopPropagation();
+      opt.action();
+    };
+    optionsEl.appendChild(btn);
+  });
+
+  const wrapRect = courtWrap.getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+
+  const domX = (px / canvas.width) * canvasRect.width + (canvasRect.left - wrapRect.left);
+  const domY = (py / canvas.height) * canvasRect.height + (canvasRect.top - wrapRect.top);
+
+  let posX = domX + 15;
+  let posY = domY - 10;
+
+  popup.style.display = 'block';
+  const popupWidth = popup.offsetWidth || 160;
+  const popupHeight = popup.offsetHeight || 100;
+
+  if (posX + popupWidth > wrapRect.width - 10) posX = domX - popupWidth - 15;
+  if (posY + popupHeight > wrapRect.height - 10) posY = wrapRect.height - popupHeight - 10;
+  if (posY < 10) posY = 10;
+
+  popup.style.left = Math.max(10, posX) + 'px';
+  popup.style.top = Math.max(10, posY) + 'px';
+}
+
+function hideMiniPopup() {
+  const popup = document.getElementById('mini-selector-popup');
+  if (popup) popup.style.display = 'none';
+}
+
+window.addEventListener('click', (e) => {
+  const popup = document.getElementById('mini-selector-popup');
+  if (popup && popup.style.display === 'block') {
+    if (!popup.contains(e.target) && e.target !== canvas) {
+      hideMiniPopup();
+    }
+  }
+});
+
+function getPlayers(mode){
+  switch(mode){
+    case 'singles': return { A: ['A1'], B: ['B1'] };
+    case 'doubles': return { A: ['A1', 'A2'], B: ['B1', 'B2'] };
+    case '2v1': return { A: ['A1'], B: ['B1', 'B2'] };
+    case '3v1': return { A: ['A1'], B: ['B1', 'B2', 'B3'] };
+  }
+}
+
+function getDefaultSetupPlayers(mode) {
+  const players = getPlayers(mode);
+  const result = {};
+
+  const teamA = players.A || [];
+  if (teamA.length === 1) {
+    result[teamA[0]] = { x: 1.25, z: 3.35, speed: 3.0 };
+  } else if (teamA.length === 2) {
+    result[teamA[0]] = { x: 1.25, z: 3.35, speed: 3.0 };
+    result[teamA[1]] = { x: -1.25, z: 3.35, speed: 3.0 };
+  } else if (teamA.length >= 3) {
+    result[teamA[0]] = { x: 0, z: 2.0, speed: 3.0 };
+    result[teamA[1]] = { x: 1.25, z: 4.8, speed: 3.0 };
+    result[teamA[2]] = { x: -1.25, z: 4.8, speed: 3.0 };
+  }
+
+  const teamB = players.B || [];
+  if (teamB.length === 1) {
+    result[teamB[0]] = { x: -1.25, z: -3.35, speed: 3.0 };
+  } else if (teamB.length === 2) {
+    result[teamB[0]] = { x: -1.25, z: -3.35, speed: 3.0 };
+    result[teamB[1]] = { x: 1.25, z: -3.35, speed: 3.0 };
+  } else if (teamB.length >= 3) {
+    result[teamB[0]] = { x: 0, z: -2.0, speed: 3.0 };
+    result[teamB[1]] = { x: -1.25, z: -4.8, speed: 3.0 };
+    result[teamB[2]] = { x: 1.25, z: -4.8, speed: 3.0 };
+  }
+
+  return result;
+}
+
+function detectHitLevel(ballFromY) {
+  if (ballFromY >= 2.0) return 'high';
+  if (ballFromY >= 1.3) return 'mid';
+  return 'low';
+}
+
+function cascadeBallPositions(fromIndex) {
+  for (let i = Math.max(1, fromIndex); i < state.shots.length - 1; i++) {
+    const prevShot = state.shots[i];
+    const nextShot = state.shots[i + 1];
+    if (prevShot.interception && prevShot.interception.pt) {
+      nextShot.ballFrom = { ...prevShot.interception.pt };
+    } else {
+      nextShot.ballFrom = { ...prevShot.ballTo };
+    }
+    autoMatchShotProperties(nextShot);
+    applySmartPositions(nextShot);
+  }
+}
+
+function updateShot1Server(){
+  if(state.shots.length <= 1) return;
+  const serverTeam = state.shots[0].server || 'A';
+  const shot1 = state.shots[1];
+  shot1.striker = serverTeam;
+
+  const players = getPlayers(state.mode);
+  const pIds = players[serverTeam] || [];
+  let closest = null, minZ = 999;
+  
+  pIds.forEach(id => {
+    const p = state.shots[0].players[id];
+    if(p && Math.abs(p.z) < minZ) {
+      minZ = Math.abs(p.z);
+      closest = p;
+    }
+  });
+
+  if(closest) {
+    shot1.ballFrom = { x: closest.x, y: 0.85, z: closest.z };
+  }
+  cascadeBallPositions(1);
+}
+
+function getDefaultApexForArc(arcType, fromY, toY) {
+  switch (arcType) {
+    case 'high_arc': return 6.0;
+    case 'mid_high_arc': return 4.0;
+    case 'low_flat_arc': return 1.6;
+    case 'fast_press': return Math.max(1.8, (fromY || 2.3));
+    case 'soft_press': return Math.max(1.6, (fromY || 2.3));
+    default: return 3.2;
+  }
+}
+
+function getDefaultApexPosForArc(arcType) {
+  switch (arcType) {
+    case 'high_arc': return 0.85;
+    case 'mid_high_arc': return 0.50;
+    case 'low_flat_arc': return 0.50;
+    case 'fast_press': return 0.10;
+    case 'soft_press': return 0.10;
+    default: return 0.50;
+  }
+}
+
+function applySmartPositions(shot) {
+  if (state.appMode !== 'smart' || shot.isSetup || shot.pendingTo) return;
+  const striker = shot.striker;
+  const defender = striker === 'A' ? 'B' : 'A';
+  const players = getPlayers(state.mode);
+
+  const strikerSide = striker === 'A' ? 1 : -1;
+  const defenderSide = defender === 'A' ? 1 : -1;
+
+  const strikerIds = players[striker] || [];
+  strikerIds.forEach((id, pIdx) => {
+    if (pIdx === 0) {
+      shot.players[id] = { x: 0, z: strikerSide * 3.35, speed: shot.players[id]?.speed || 3.0 };
+    } else {
+      shot.players[id] = { x: pIdx === 1 ? -1.25 : 1.25, z: strikerSide * 4.5, speed: shot.players[id]?.speed || 3.0 };
+    }
+  });
+
+  const defenderIds = players[defender] || [];
+  if (defenderIds.length > 0) {
+    shot.players[defenderIds[0]] = { x: shot.ballTo.x, z: shot.ballTo.z, speed: shot.players[defenderIds[0]]?.speed || 3.0 };
+    for (let i = 1; i < defenderIds.length; i++) {
+      const coverX = shot.ballTo.x > 0 ? -1.25 : 1.25;
+      shot.players[defenderIds[i]] = { x: coverX, z: defenderSide * 3.35, speed: shot.players[defenderIds[i]]?.speed || 3.0 };
+    }
+  }
+
+  const prevShotIndex = state.shots.indexOf(shot) - 1;
+  const prevShot = prevShotIndex >= 0 ? state.shots[prevShotIndex] : null;
+
+  if (prevShot) {
+    let baseDuration = PhysicsEngine.getShotDuration(shot);
+
+    Object.keys(shot.players).forEach(id => {
+      const prevP = prevShot.players[id];
+      const currP = shot.players[id];
+      if (prevP && currP) {
+        const dist = Math.hypot(currP.x - prevP.x, currP.z - prevP.z);
+        let reqSpeed = dist / Math.max(0.15, baseDuration);
+        reqSpeed = Math.min(8.0, Math.max(1.0, reqSpeed));
+        shot.players[id].speed = parseFloat(reqSpeed.toFixed(1));
+      }
+    });
+  }
+}
+
+function newShot(index, prevShotData=null){
+  const prev = prevShotData || (index > 0 ? state.shots[index-1] : null);
+  const players = getPlayers(state.mode);
+
+  const serverTeam = state.shots[0]?.server || 'A';
+  let striker, defender;
+  
+  if (index === 0) {
+    striker = 'A'; defender = 'B';
+  } else if (index === 1) {
+    striker = serverTeam;
+    defender = serverTeam === 'A' ? 'B' : 'A';
+  } else {
+    const prevStriker = prev ? prev.striker : 'A';
+    striker = prevStriker === 'A' ? 'B' : 'A';
+    defender = striker === 'A' ? 'B' : 'A';
+  }
+
+  let ballFrom, ballTo;
+  if (index === 0) {
+    ballFrom = { x: 1.25, y: 0.85, z: 3.35 };
+    ballTo = { x: 1.25, y: 0.85, z: 3.35 };
+  } else if (index === 1) {
+    const setupShot = state.shots[0] || { players: {} };
+    const pIds = players[serverTeam] || [];
+    let closest = null, minZ = 999;
+    pIds.forEach(id => {
+      const p = setupShot.players[id];
+      if (p && Math.abs(p.z) < minZ) { minZ = Math.abs(p.z); closest = p; }
+    });
+    ballFrom = closest ? { x: closest.x, y: 0.85, z: closest.z } : { x: 1.25, y: 0.85, z: serverTeam==='A'?3.35:-3.35 };
+    ballTo = { x: -1.25, y: 0.15, z: striker==='A'?-2.2:2.2 };
+  } else {
+    if (prev && prev.interception && prev.interception.pt) {
+      ballFrom = { ...prev.interception.pt };
+    } else {
+      ballFrom = prev ? { ...prev.ballTo } : { x: 0, y: 1.55, z: 0 };
+    }
+    const defSideZ = striker === 'A' ? -4.5 : 4.5;
+    ballTo = { x: 0, y: 0.1, z: defSideZ };
+  }
+
+  const initialArc = index === 1 ? 'low_flat_arc' : 'mid_high_arc';
+
+  const shot = {
+    isSetup: index === 0,
+    pendingTo: false,
+    server: index === 0 ? (state.shots[0]?.server || 'A') : undefined,
+    striker: striker,
+    hitLevel: index === 1 ? 'low' : 'high',
+    hitLevelOverride: false,
+    arcType: initialArc,
+    apexHeight: getDefaultApexForArc(initialArc, ballFrom.y, ballTo.y),
+    apexPos: getDefaultApexPosForArc(initialArc),
+    forehand: true,
+    forehandOverride: false,
+    ballFrom: ballFrom,
+    ballTo: ballTo,
+    interception: null,
+    players: {}
+  };
+
+  if (index === 0) {
+    shot.players = getDefaultSetupPlayers(state.mode);
+  } else {
+    const isSmart = state.appMode === 'smart';
+    const strikerSide = striker === 'A' ? 1 : -1;
+    const homeZ = strikerSide * 3.35;
+
+    players[striker].forEach((id) => {
+      shot.players[id] = { x: 0, z: homeZ, speed: 3.0 };
+    });
+
+    players[defender].forEach((id) => {
+      shot.players[id] = prev && prev.players[id] && !isSmart ? { ...prev.players[id], speed: 3.0 } : { x: 0, z: (defender === 'A' ? 1 : -1) * 3.35, speed: 3.0 };
+    });
+
+    if (isSmart) {
+      applySmartPositions(shot);
+    }
+  }
+
+  autoMatchShotProperties(shot);
+  return shot;
+}
+
+function setCurrentShot(idx, atEnd = false) {
+  if (idx < 0 || idx >= state.shots.length) return;
+  state.currentShot = idx;
+  hideMiniPopup();
+  const shot = state.shots[idx];
+  if (shot && !shot.isSetup && !shot.pendingTo) {
+    state.selected = { type: 'ball', point: 'to' };
+  } else {
+    state.selected = null;
+  }
+  render2D();
+  sync3DPositions(atEnd);
+  updateShotInfo();
+  updateHUD();
+  updateParamPanel();
+  updateLog();
+}
+
+function autoMatchShotProperties(shot) {
+  if (shot.isSetup || shot.pendingTo) return;
+
+  const idx = state.shots.indexOf(shot);
+  
+  if (idx === 1) {
+    shot.hitLevel = 'low';
+    if (!shot.hitLevelOverride) {
+      shot.ballFrom.y = 0.85;
+    }
+  }
+
+  if (!shot.forehandOverride) {
+    if (shot.striker === 'A') {
+      shot.forehand = (shot.ballTo.x >= 0);
+    } else {
+      shot.forehand = (shot.ballTo.x <= 0);
+    }
+  }
+
+  if (state.appMode === 'smart' && !shot.hitLevelOverride && idx !== 1) {
+    if (shot.arcType === 'fast_press' || shot.arcType === 'soft_press') {
+      shot.hitLevel = 'high';
+      shot.ballFrom.y = Math.max(2.3, shot.ballFrom.y || 2.3);
+    } else {
+      shot.hitLevel = detectHitLevel(shot.ballFrom.y);
+    }
+  }
+
+  if ((shot.hitLevel === 'mid' || shot.hitLevel === 'low') && (shot.arcType === 'fast_press' || shot.arcType === 'soft_press')) {
+    shot.arcType = 'mid_high_arc';
+  }
+
+  if (ARC_TYPES[shot.arcType]?.isPress) {
+    shot.apexHeight = getDefaultApexForArc(shot.arcType, shot.ballFrom.y, shot.ballTo.y);
+    shot.apexPos = getDefaultApexPosForArc(shot.arcType);
+  } else if (shot.apexPos === undefined) {
+    shot.apexPos = getDefaultApexPosForArc(shot.arcType);
+  }
+}
+
+function initDemo(){
+  state.shots = [];
+  const s0 = newShot(0); s0.server = 'A'; state.shots.push(s0);
+  const s1 = newShot(1); s1.hitLevel = 'low'; s1.ballFrom.y = 0.85; s1.arcType = 'low_flat_arc'; s1.ballTo = {x: -1.25, y: 0.15, z: -2.2}; state.shots.push(s1);
+  const s2 = newShot(2); s2.hitLevel = 'high'; s2.ballFrom.y = 2.3; s2.arcType = 'high_arc'; s2.ballTo = {x: 1.8, y: 0.1, z: 5.5}; state.shots.push(s2);
+  const s3 = newShot(3); s3.hitLevel = 'high'; s3.ballFrom.y = 2.4; s3.arcType = 'fast_press'; s3.ballTo = {x: -1.5, y: 0.1, z: -4.8}; state.shots.push(s3);
+  const s4 = newShot(4); s4.hitLevel = 'high'; s4.ballFrom.y = 2.3; s4.arcType = 'soft_press'; s4.ballTo = {x: 0, y: 0.1, z: 2.1}; state.shots.push(s4);
+
+  updateShot1Server();
+  state.shots.forEach(s => {
+    autoMatchShotProperties(s);
+    applySmartPositions(s);
+  });
+
+  setCurrentShot(0);
+  syncCurrentToLibrary();
+}
+
+function syncCurrentToLibrary() {
+  const script = scriptLibrary.find(s => s.id === currentScriptId);
+  if(script) {
+    script.data = { mode: state.mode, appMode: state.appMode, shots: JSON.parse(JSON.stringify(state.shots)) };
+  }
+}
+
+function loadScriptFromLibrary(id) {
+  currentScriptId = id;
+  const script = scriptLibrary.find(s => s.id === id);
+  if(script && script.data) {
+    state.mode = script.data.mode;
+    state.shots = JSON.parse(JSON.stringify(script.data.shots));
+    state.history = [];
+    state.redoHistory = [];
+    
+    if (typeof playerMeshes !== 'undefined') {
+      Object.values(playerMeshes).forEach(m=>scene.remove(m));
+      playerMeshes = {};
+      buildEntities();
+    }
+
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === state.mode));
+    setCurrentShot(0); updateHUD(); updateScriptsList();
+  }
+}
+
+function updateScriptsList(){
+  const list = document.getElementById('scripts-list');
+  list.innerHTML = scriptLibrary.map(s => `
+    <div class="script-item-wrap">
+      <div class="popup-item ${s.id === currentScriptId ? 'current' : ''}" onclick="loadScriptFromLibrary('${s.id}')">
+        ${s.name}
+      </div>
+      <div class="script-action-btns">
+        <button class="btn-edit-script" onclick="editScriptName('${s.id}', event)" title="修改名稱">✎</button>
+        <button class="btn-del-script" onclick="deleteScript('${s.id}', event)" title="刪除">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function editScriptName(id, event) {
+  if(event) event.stopPropagation();
+  const script = scriptLibrary.find(s => s.id === id);
+  if(!script) return;
+  const newName = prompt("請輸入新的腳本名稱：", script.name);
+  if(newName !== null && newName.trim() !== "") {
+    script.name = newName.trim();
+    updateScriptsList();
+  }
+}
+
+function deleteScript(id, event) {
+  if(event) event.stopPropagation();
+  if(scriptLibrary.length <= 1) { alert("至少需保留一個腳本"); return; }
+  if(!confirm("確定刪除此腳本？此操作無法撤銷。")) return;
+  scriptLibrary = scriptLibrary.filter(s => s.id !== id);
+  if(currentScriptId === id) {
+    loadScriptFromLibrary(scriptLibrary[0].id);
+  } else {
+    updateScriptsList();
+  }
+}
+
+// ========== 羽球物理軌跡演算法引擎 ==========
+const PhysicsEngine = {
+  getDistance(from, to) {
+    return Math.hypot(to.x - from.x, to.z - from.z);
+  },
+
+  getSpeedAndForce(from, to, arcType) {
+    const dist = this.getDistance(from, to);
+    let baseSpeed = 15 + dist * 3.5;
+    if (arcType === 'fast_press') baseSpeed *= 1.45;
+    if (arcType === 'soft_press') baseSpeed *= 0.85;
+    if (arcType === 'high_arc') baseSpeed *= 1.15;
+    
+    const kmh = baseSpeed * 3.6;
+    const forceRatio = Math.min(1.0, dist / 12.0);
+    return { speedMps: baseSpeed, speedKmh: Math.round(kmh), forceRatio };
+  },
+
+  getShotDuration(shot) {
+    if (!shot || shot.isSetup) return 1.0;
+    const dist = this.getDistance(shot.ballFrom, shot.ballTo);
+    let baseDuration = 1.8;
+    switch(shot.arcType) {
+      case 'high_arc': 
+        baseDuration = 1.8 + dist * 0.08 + (shot.apexHeight || 6.0) * 0.1;
+        break;
+      case 'mid_high_arc': 
+        baseDuration = 1.3 + dist * 0.07 + (shot.apexHeight || 4.0) * 0.08;
+        break;
+      case 'low_flat_arc': 
+        baseDuration = 0.9 + dist * 0.05;
+        break;
+      case 'fast_press': 
+        baseDuration = 0.5 + dist * 0.04;
+        break;
+      case 'soft_press': 
+        baseDuration = 1.0 + dist * 0.05;
+        break;
+    }
+    return Math.max(0.4, baseDuration);
+  },
+
+  getTotalRallyDuration() {
+    let total = 0;
+    for (let i = 1; i < state.shots.length; i++) {
+      total += this.getShotDuration(state.shots[i]);
+    }
+    return Math.max(0.1, total);
+  },
+
+  getTrajectoryPoint(shot, t) {
+    const from = shot.ballFrom, to = shot.ballTo;
+    const arcType = shot.arcType;
+    let x, y, z;
+
+    const crossesNet = (from.z * to.z < 0);
+    const totalDistZ = Math.abs(from.z) + Math.abs(to.z);
+    const tNet = (crossesNet && totalDistZ > 0) ? Math.abs(from.z) / totalDistZ : 0.5;
+
+    const userApex = shot.apexHeight !== undefined ? shot.apexHeight : getDefaultApexForArc(arcType, from.y, to.y);
+    const apexH = Math.max(userApex, Math.max(from.y, to.y) + 0.05);
+    
+    const tApex = (shot.apexPos !== undefined) ? shot.apexPos : getDefaultApexPosForArc(arcType);
+
+    if (arcType === 'fast_press' || arcType === 'soft_press') {
+      const decay = arcType === 'fast_press' ? 1.8 : 1.2;
+      const tDecay = (1 - Math.exp(-decay * t)) / (1 - Math.exp(-decay));
+
+      x = from.x + (to.x - from.x) * tDecay;
+      z = from.z + (to.z - from.z) * tDecay;
+      let baseY = from.y + (to.y - from.y) * tDecay;
+
+      let netArcBonus = 0;
+      if (crossesNet) {
+        const linearNetY = from.y + (to.y - from.y) * tNet;
+        const minSafeNetY = COURT.net_height + 0.10;
+        if (linearNetY < minSafeNetY) {
+          netArcBonus = (minSafeNetY - linearNetY) * Math.sin(t * Math.PI);
+        }
+      }
+      y = baseY + netArcBonus;
+    } 
+    else {
+      const decay = 1.6;
+      const tDecay = (1 - Math.exp(-decay * t)) / (1 - Math.exp(-decay));
+      x = from.x + (to.x - from.x) * tDecay;
+      z = from.z + (to.z - from.z) * tDecay;
+
+      if (tApex > 0.05 && tApex < 0.95) {
+        if (t <= tApex) {
+          const normT = t / tApex;
+          y = from.y + (apexH - from.y) * Math.sin(normT * Math.PI / 2);
+        } else {
+          const normT = (t - tApex) / (1 - tApex);
+          y = apexH - (apexH - to.y) * Math.pow(normT, 1.8);
+        }
+      } else {
+        const baseLinearY = (1 - t) * from.y + t * to.y;
+        const hBoost = Math.max(0.1, apexH - (from.y + to.y) / 2);
+        y = baseLinearY + 4 * hBoost * t * (1 - t);
+      }
+    }
+
+    return { x, y: Math.max(0.05, y), z };
+  },
+
+  checkPhysics(shot) {
+    if (shot.isSetup) return { valid: true, type: 'ok', msg: "第 0 拍：初始發接發站位調整" };
+    if (shot.pendingTo) return { valid: true, type: 'ok', msg: "🎯 請點擊對面場地設定球路落點" };
+
+    const { speedKmh } = this.getSpeedAndForce(shot.ballFrom, shot.ballTo, shot.arcType);
+    
+    let netPassed = false;
+    let minNetHeight = 99;
+    for (let t = 0; t <= 1.0; t += 0.01) {
+      const p = this.getTrajectoryPoint(shot, t);
+      if (Math.abs(p.z) < 0.15) {
+        netPassed = true;
+        if (p.y < minNetHeight) minNetHeight = p.y;
+      }
+    }
+
+    let speedWarns = [];
+    const duration = this.getShotDuration(shot);
+    const prevShotIndex = state.shots.indexOf(shot) - 1;
+    const prevShot = prevShotIndex >= 0 ? state.shots[prevShotIndex] : null;
+
+    Object.entries(shot.players).forEach(([id, p]) => {
+      if (prevShot && prevShot.players[id]) {
+        const prevP = prevShot.players[id];
+        const dist = Math.hypot(p.x - prevP.x, p.z - prevP.z);
+        const reqSpeed = dist / Math.max(0.1, duration);
+
+        if (reqSpeed > 8.0) {
+          speedWarns.push(`⚠️ 球員 ${id} 跑動距離過大 (${dist.toFixed(1)}m)，極限需 ${reqSpeed.toFixed(1)}m/s，來不及跑過去 (速度過快/接不到球)！`);
+        } else if (reqSpeed > p.speed) {
+          speedWarns.push(`⚠️ 球員 ${id} 跑動距離 ${dist.toFixed(1)}m，目前設定速度 (${p.speed.toFixed(1)}m/s) 低於所需 (${reqSpeed.toFixed(1)}m/s)，來不及跑過去！`);
+        }
+      } else if (p.speed > 8.0) {
+        speedWarns.push(`⚠️ 球員 ${id} 設定速度 ${p.speed.toFixed(1)}m/s 超過 8m/s 人類極限！`);
+      }
+    });
+
+    const speedWarnText = speedWarns.length ? ' ' + speedWarns.join(' ') : '';
+
+    if (netPassed && minNetHeight < COURT.net_height) {
+      return {
+        valid: false,
+        type: 'warn',
+        msg: `⚠️ 警告：軌跡過網高度僅 ${minNetHeight.toFixed(2)}m (網高 ${COURT.net_height}m)，球將觸網！` + speedWarnText
+      };
+    }
+
+    if (shot.hitLevel !== 'high' && (shot.arcType === 'fast_press' || shot.arcType === 'soft_press')) {
+      return {
+        valid: false,
+        type: 'warn',
+        msg: `⚠️ 違背物理規律：低位/中位擊球無法進行下殺/快壓！` + speedWarnText
+      };
+    }
+
+    if (speedWarns.length > 0) {
+      return {
+        valid: false,
+        type: 'warn',
+        msg: speedWarns.join(' ')
+      };
+    }
+
+    return {
+      valid: true,
+      type: 'ok',
+      msg: `✓ 物理規律正常：球速 ${speedKmh} km/h，過網 ${minNetHeight < 50 ? minNetHeight.toFixed(2) + 'm' : '極佳'}，頂點 ${shot.apexHeight.toFixed(2)}m。`
+    };
+  }
+};
+
+function getInterceptionInfo(shot) {
+  if (!shot || shot.isSetup || shot.pendingTo) return [];
+  const defenderSide = shot.striker === 'A' ? 'B' : 'A';
+  const defenderIds = getPlayers(state.mode)[defenderSide] || [];
+  const duration = PhysicsEngine.getShotDuration(shot);
+  const totalDist = PhysicsEngine.getDistance(shot.ballFrom, shot.ballTo);
+  if (totalDist <= 0.1) return [];
+
+  const stepDist = 0.5;
+  const steps = Math.max(2, Math.floor(totalDist / stepDist));
+  const intercepts = [];
+
+  defenderIds.forEach(id => {
+    const playerPos = shot.players[id];
+    if (!playerPos) return;
+
+    const speed = playerPos.speed || 3.0;
+
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const flightTime = t * duration;
+      const pt = PhysicsEngine.getTrajectoryPoint(shot, t);
+
+      const isDefenderArea = defenderSide === 'A' ? (pt.z >= -0.1) : (pt.z <= 0.1);
+
+      if (isDefenderArea && pt.y >= 0.8 && pt.y <= 2.8) {
+        const snapX = shot.ballFrom.x + t * (shot.ballTo.x - shot.ballFrom.x);
+        const snapZ = shot.ballFrom.z + t * (shot.ballTo.z - shot.ballFrom.z);
+
+        const dist = Math.hypot(snapX - playerPos.x, snapZ - playerPos.z);
+        const timeNeeded = dist / speed;
+
+        if (timeNeeded <= flightTime) {
+          intercepts.push({
+            playerId: id,
+            t: t,
+            flightTime: flightTime,
+            pt: pt,
+            snapX: snapX,
+            snapZ: snapZ,
+            dist: dist,
+            timeNeeded: timeNeeded,
+            height: pt.y,
+            canPress: pt.y >= 2.0
+          });
+        }
+      }
+    }
+  });
+
+  return intercepts;
+}
+
+function getArcPoints2D(shot) {
+  if (!shot || !shot.ballFrom || !shot.ballTo) return { points: [] };
+  const points = [];
+  const steps = 35;
+  const fromP = m2px(shot.ballFrom.x, shot.ballFrom.z);
+  const toP = m2px(shot.ballTo.x, shot.ballTo.z);
+
+  const dx = toP.x - fromP.x;
+  const dy = toP.y - fromP.y;
+  const len = Math.hypot(dx, dy);
+
+  let nx = 0, ny = -1;
+  if (len > 0.001) {
+    let tempNx = -dy / len;
+    let tempNy = dx / len;
+    if (tempNy > 0) {
+      tempNx = -tempNx;
+      tempNy = -tempNy;
+    }
+    nx = tempNx;
+    ny = tempNy;
+  }
+
+  const heightScale = scale * 0.35;
+
+  let maxH = -1;
+  let maxHPoint = null;
+  let netPoint = null;
+
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const pt3d = PhysicsEngine.getTrajectoryPoint(shot, t);
+    const baseP = m2px(pt3d.x, pt3d.z);
+    
+    const displayH = Math.max(0, pt3d.y - (shot.ballTo.y || 0) * Math.pow(t, 2));
+
+    const arcX = baseP.x + nx * (displayH * heightScale);
+    const arcY = baseP.y + ny * (displayH * heightScale);
+
+    const ptObj = {
+      x: arcX,
+      y: arcY,
+      baseX: baseP.x,
+      baseY: baseP.y,
+      h: pt3d.y,
+      t: t,
+      pt3d: pt3d
+    };
+
+    points.push(ptObj);
+
+    if (pt3d.y > maxH) {
+      maxH = pt3d.y;
+      maxHPoint = ptObj;
+    }
+
+    if (i > 0) {
+      const prevPt = points[i - 1].pt3d;
+      if ((prevPt.z * pt3d.z <= 0) && Math.abs(prevPt.z - pt3d.z) > 0.001) {
+        netPoint = ptObj;
+      }
+    }
+  }
+
+  return { points, maxHPoint, netPoint, nx, ny };
+}
+
+// ========== 2D Canvas 繪圖渲染 ==========
+const canvas = document.getElementById('court2d');
+const ctx = canvas.getContext('2d');
+let scale = 1, offX = 0, offY = 0;
+
+function m2px(x, z){ return { x: offX + (-z) * scale, y: offY + x * scale }; }
+function px2m(px, py){ return { x: (py - offY) / scale, z: -((px - offX) / scale) }; }
+
+function resizeCanvas(){
+  const wrap = document.getElementById('court-wrap');
+  if(!wrap || wrap.clientWidth <= 0 || wrap.clientHeight <= 0) return;
+  
+  const innerW = wrap.clientWidth - 16;
+  const innerH = wrap.clientHeight - 16;
+  
+  const totalLength = COURT.length + 2 * COURT.margin; 
+  const totalWidth = COURT.width_d + 2 * COURT.margin;  
+  const courtAspect = totalLength / totalWidth;
+  
+  let drawW, drawH;
+  if(innerW / courtAspect <= innerH){ 
+    drawW = innerW; 
+    drawH = innerW / courtAspect; 
+  } else { 
+    drawH = innerH; 
+    drawW = innerH * courtAspect; 
+  }
+  
+  canvas.width = Math.floor(drawW); 
+  canvas.height = Math.floor(drawH);
+  canvas.style.width = Math.floor(drawW) + 'px'; 
+  canvas.style.height = Math.floor(drawH) + 'px';
+  
+  scale = drawW / totalLength; 
+  offX = drawW / 2; 
+  offY = drawH / 2 + 20;
+  render2D();
+  renderSideArcCanvas();
+}
+
+function render2D(){
+  const w = canvas.width, h = canvas.height;
+  if(w === 0 || h === 0) return;
+
+  ctx.clearRect(0, 0, w, h);
+  
+  const c1 = m2px(-COURT.width_d/2, -COURT.length/2), c2 = m2px(COURT.width_d/2, COURT.length/2);
+  ctx.fillStyle = '#1b5e20'; 
+  ctx.fillRect(c1.x, c1.y, c2.x - c1.x, c2.y - c1.y);
+  
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+  ctx.strokeRect(c1.x, c1.y, c2.x-c1.x, c2.y-c1.y);
+  ctx.lineWidth = 1.5;
+  const sTop = m2px(-COURT.width_s/2, -COURT.length/2), sBottom = m2px(COURT.width_s/2, COURT.length/2);
+  ctx.beginPath(); ctx.moveTo(c1.x, sTop.y); ctx.lineTo(c2.x, sTop.y); ctx.moveTo(c1.x, sBottom.y); ctx.lineTo(c2.x, sBottom.y); ctx.stroke();
+  const netX = m2px(0, 0).x; ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(netX, c1.y); ctx.lineTo(netX, c2.y); ctx.stroke();
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+  const sfLeft = m2px(0, -COURT.service_line).x, sfRight = m2px(0, COURT.service_line).x;
+  ctx.beginPath(); ctx.moveTo(sfLeft, c1.y); ctx.lineTo(sfLeft, c2.y); ctx.moveTo(sfRight, c1.y); ctx.lineTo(sfRight, c2.y); ctx.stroke();
+  const dbLeft = m2px(0, -COURT.double_back).x, dbRight = m2px(0, COURT.double_back).x;
+  ctx.beginPath(); ctx.moveTo(dbLeft, c1.y); ctx.lineTo(dbLeft, c2.y); ctx.moveTo(dbRight, c1.y); ctx.lineTo(dbRight, c2.y); ctx.stroke();
+  const midY = m2px(0, 0).y; ctx.beginPath(); ctx.moveTo(c1.x, midY); ctx.lineTo(sfLeft, midY); ctx.moveTo(sfRight, midY); ctx.lineTo(c2.x, midY); ctx.stroke();
+  ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(netX, c1.y, 4, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(netX, c2.y, 4, 0, Math.PI*2); ctx.fill();
+
+  state.freeDraw.paths.forEach(path => drawPathOn2D(path));
+  if (state.freeDraw.currentPath) drawPathOn2D(state.freeDraw.currentPath);
+
+  if (state.appMode === 'free') return;
+
+  const shot = state.shots[state.currentShot];
+  if(!shot) return;
+
+  if (shot.pendingTo) {
+    const oppSide = shot.striker === 'A' ? -1 : 1;
+    const centerPos = m2px(0, oppSide * 3.35);
+    ctx.save();
+    ctx.strokeStyle = '#ffd54f'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.arc(centerPos.x, centerPos.y, 32, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = '#ffd54f'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🎯 點擊此半場設定落點', centerPos.x, centerPos.y);
+    ctx.restore();
+  }
+
+  if (state.appMode === 'manual' && !shot.isSetup && !shot.pendingTo) {
+    const strikerSide = shot.striker === 'A' ? 1 : -1;
+    const homePos = m2px(0, strikerSide * 3.35);
+    ctx.save();
+    ctx.strokeStyle = '#ffd54f'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(homePos.x, homePos.y, 16, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = '#ffd54f'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('提示回中', homePos.x, homePos.y);
+    ctx.restore();
+
+    const targetPos = m2px(shot.ballTo.x, shot.ballTo.z);
+    ctx.save();
+    ctx.strokeStyle = '#81c784'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(targetPos.x, targetPos.y, 18, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = '#81c784'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('提示預跑', targetPos.x, targetPos.y);
+    ctx.restore();
+  }
+
+  if (state.appMode === 'smart' && !shot.isSetup && !shot.pendingTo) {
+    const strikerSide = shot.striker === 'A' ? 1 : -1;
+    const pHome = m2px(0, strikerSide * 3.35);
+    
+    ctx.save();
+    ctx.fillStyle = shot.striker === 'A' ? 'rgba(33, 150, 243, 0.35)' : 'rgba(255, 82, 82, 0.35)';
+    ctx.strokeStyle = shot.striker === 'A' ? '#2196f3' : '#ff5252';
+    ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(pHome.x, pHome.y, 16, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('回中', pHome.x, pHome.y);
+    ctx.restore();
+
+    const defenderSide = shot.striker === 'A' ? 'B' : 'A';
+    const pGhostMove = m2px(shot.ballTo.x, shot.ballTo.z);
+    ctx.save();
+    ctx.fillStyle = defenderSide === 'A' ? 'rgba(33, 150, 243, 0.35)' : 'rgba(255, 82, 82, 0.35)';
+    ctx.strokeStyle = defenderSide === 'A' ? '#2196f3' : '#ff5252';
+    ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(pGhostMove.x, pGhostMove.y, 18, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('預跑', pGhostMove.x, pGhostMove.y);
+    ctx.restore();
+  }
+
+  if(state.currentShot >= 1){
+    const prevShot = state.shots[state.currentShot - 1];
+    Object.entries(shot.players).forEach(([id, pos])=>{
+      const prevPos = prevShot.players[id];
+      if(prevPos){
+        const pPrev = m2px(prevPos.x, prevPos.z), pCurr = m2px(pos.x, pos.z);
+        ctx.save(); ctx.strokeStyle = id.startsWith('A') ? 'rgba(33, 150, 243, 0.45)' : 'rgba(255, 82, 82, 0.45)';
+        ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(pPrev.x, pPrev.y); ctx.lineTo(pCurr.x, pCurr.y); ctx.stroke(); ctx.restore();
+        const dist = Math.hypot(pCurr.x - pPrev.x, pCurr.y - pPrev.y);
+        if(dist > 20){
+          const arrowAngle = Math.atan2(pCurr.y - pPrev.y, pCurr.x - pPrev.x);
+          ctx.save(); ctx.fillStyle = id.startsWith('A') ? 'rgba(33, 150, 243, 0.6)' : 'rgba(255, 82, 82, 0.6)';
+          ctx.translate(pCurr.x - 16 * Math.cos(arrowAngle), pCurr.y - 16 * Math.sin(arrowAngle)); ctx.rotate(arrowAngle);
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-8, -4); ctx.lineTo(-8, 4); ctx.fill(); ctx.restore();
+        }
+        ctx.fillStyle = id.startsWith('A') ? 'rgba(33, 150, 243, 0.35)' : 'rgba(255, 82, 82, 0.35)';
+        ctx.beginPath(); ctx.arc(pPrev.x, pPrev.y, 14, 0, Math.PI*2); ctx.fill();
+      }
+    });
+  }
+
+  // 渲染 2D 球路軌跡
+  if(!shot.isSetup && !shot.pendingTo){
+    const from = m2px(shot.ballFrom.x, shot.ballFrom.z), to = m2px(shot.ballTo.x, shot.ballTo.z);
+    const isSelectedBall = state.selected?.type === 'ball';
+
+    ctx.save();
+    ctx.strokeStyle = isSelectedBall ? '#ffffff' : 'rgba(220, 220, 220, 0.85)';
+    ctx.lineWidth = isSelectedBall ? 2.5 : 1.8;
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+    ctx.restore();
+
+    const arcData = getArcPoints2D(shot);
+    if (arcData && arcData.points && arcData.points.length > 1) {
+      ctx.save();
+      ctx.strokeStyle = '#ffd54f';
+      ctx.lineWidth = isSelectedBall ? 3.0 : 2.2;
+      ctx.setLineDash([6, 4]);
+
+      ctx.beginPath();
+      ctx.moveTo(arcData.points[0].x, arcData.points[0].y);
+      for (let i = 1; i < arcData.points.length; i++) {
+        ctx.lineTo(arcData.points[i].x, arcData.points[i].y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const intercepts = getInterceptionInfo(shot);
+    if (intercepts && intercepts.length > 0) {
+      intercepts.forEach(ic => {
+        const interPx = m2px(ic.snapX, ic.snapZ);
+
+        ctx.save();
+        ctx.fillStyle = '#ff9800';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(interPx.x, interPx.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillStyle = '#ffe082';
+        ctx.textAlign = 'center';
+        ctx.fillText(`⚡攔截 ${ic.height.toFixed(1)}m`, interPx.x, interPx.y - 9);
+        ctx.restore();
+      });
+    }
+
+    if (arcData.maxHPoint) {
+      const pMax = arcData.maxHPoint;
+      ctx.save();
+      ctx.setLineDash([2, 2]); ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(pMax.baseX, pMax.baseY); ctx.lineTo(pMax.x, pMax.y); ctx.stroke();
+
+      ctx.fillStyle = '#ffd54f';
+      ctx.beginPath(); ctx.arc(pMax.x, pMax.y, 5, 0, Math.PI * 2); ctx.fill();
+
+      ctx.strokeStyle = '#4fc3f7';
+      ctx.beginPath(); ctx.arc(pMax.baseX, pMax.baseY, 6, 0, Math.PI * 2); ctx.stroke();
+
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText(`頂點 ${pMax.h.toFixed(1)}m`, pMax.x, pMax.y - 3);
+      ctx.restore();
+    }
+
+    const angle = Math.atan2(to.y - from.y, to.x - from.x);
+    ctx.fillStyle = '#ffd54f'; ctx.beginPath(); ctx.moveTo(to.x, to.y);
+    ctx.lineTo(to.x - 14 * Math.cos(angle - 0.4), to.y - 14 * Math.sin(angle - 0.4));
+    ctx.lineTo(to.x - 14 * Math.cos(angle + 0.4), to.y - 14 * Math.sin(angle + 0.4)); ctx.fill();
+
+    ctx.fillStyle = (state.selected?.type==='ball' && state.selected.point==='from') ? '#ffffff' : '#ffd54f';
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(from.x, from.y, 8, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    
+    ctx.fillStyle = (state.selected?.type==='ball' && state.selected.point==='to') ? '#ffffff' : '#f57c00';
+    ctx.beginPath(); ctx.arc(to.x, to.y, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  }
+
+  // 繪製球員與吸附狀態
+  Object.entries(shot.players).forEach(([id, pos])=>{
+    const p = m2px(pos.x, pos.z), sel = state.selected?.type==='player' && state.selected.id===id;
+    const isSnapped = state.snappedPlayer === id;
+
+    ctx.fillStyle = id.startsWith('A') ? '#2196f3' : '#ff5252'; 
+    ctx.strokeStyle = isSnapped ? '#ff9800' : (sel ? '#ffffff' : 'transparent');
+    ctx.lineWidth = isSnapped ? 4 : 3; 
+
+    ctx.beginPath(); ctx.arc(p.x, p.y, isSnapped ? 18 : 16, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(id.replace('A','').replace('B',''), p.x, p.y);
+
+    if (isSnapped) {
+      ctx.font = 'bold 9px sans-serif'; ctx.fillStyle = '#ffb74d';
+      let snapLabel = '🧲磁吸';
+      if (state.snappedType === 'intercept') snapLabel = '⚡攔截吸附';
+      else if (state.snappedType === 'ballTo') snapLabel = '🎯終點吸附';
+      ctx.fillText(snapLabel, p.x, p.y + 24);
+    }
+  });
+}
+
+function drawPathOn2D(path) {
+  if (!path.points || path.points.length < 2) return;
+  ctx.save();
+  ctx.strokeStyle = path.color;
+  ctx.lineWidth = path.width;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  const p0 = m2px(path.points[0].x, path.points[0].z);
+  ctx.moveTo(p0.x, p0.y);
+  for (let i = 1; i < path.points.length; i++) {
+    const pt = m2px(path.points[i].x, path.points[i].z);
+    ctx.lineTo(pt.x, pt.y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+function renderSideArcCanvas() {
+  const sideCanvas = document.getElementById('sideArcCanvas');
+  if (!sideCanvas) return;
+  const ctxS = sideCanvas.getContext('2d');
+  const w = sideCanvas.width = sideCanvas.clientWidth || 320;
+  const h = sideCanvas.height = sideCanvas.clientHeight || 110;
+
+  ctxS.clearRect(0, 0, w, h);
+
+  const shot = state.shots[state.currentShot];
+  if (!shot || shot.isSetup || shot.pendingTo) {
+    ctxS.fillStyle = '#666666';
+    ctxS.font = '12px sans-serif';
+    ctxS.textAlign = 'center';
+    ctxS.fillText('無當前球路軌跡可預覽', w / 2, h / 2);
+    return;
+  }
+
+  const marginX = 25;
+  const groundY = h - 18;
+  const maxHVal = Math.max(6.5, (shot.apexHeight || 4.0) + 0.8);
+
+  function z2px(z) { return marginX + ((7.0 - z) / 14.0) * (w - 2 * marginX); }
+  function y2py(y) { return groundY - (y / maxHVal) * (groundY - 12); }
+
+  ctxS.strokeStyle = '#2e7d32'; ctxS.lineWidth = 2.5;
+  ctxS.beginPath(); ctxS.moveTo(z2px(6.7), groundY); ctxS.lineTo(z2px(-6.7), groundY); ctxS.stroke();
+
+  ctxS.strokeStyle = '#1e3a5f'; ctxS.lineWidth = 1;
+  [-6.7, -5.94, -1.98, 0, 1.98, 5.94, 6.7].forEach(z => {
+    ctxS.beginPath(); ctxS.moveTo(z2px(z), groundY); ctxS.lineTo(z2px(z), groundY - 5); ctxS.stroke();
+  });
+
+  ctxS.fillStyle = '#64b5f6'; ctxS.font = '9px sans-serif'; ctxS.textAlign = 'left';
+  ctxS.fillText('A 隊半場', marginX, h - 4);
+
+  ctxS.fillStyle = '#ff8a65'; ctxS.textAlign = 'right';
+  ctxS.fillText('B 隊半場', w - marginX, h - 4);
+
+  const netX = z2px(0); const netTopY = y2py(COURT.net_height);
+  ctxS.strokeStyle = '#ffffff'; ctxS.lineWidth = 2;
+  ctxS.beginPath(); ctxS.moveTo(netX, groundY); ctxS.lineTo(netX, netTopY); ctxS.stroke();
+  ctxS.fillStyle = '#ff5252'; ctxS.fillRect(netX - 2, netTopY, 4, 3);
+
+  ctxS.strokeStyle = '#ffd54f'; ctxS.lineWidth = 2; ctxS.beginPath();
+
+  const steps = 40;
+  let maxHPoint = { y: -1, z: 0, px: 0, py: 0 };
+  let netClearanceY = null;
+
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const pt3d = PhysicsEngine.getTrajectoryPoint(shot, t);
+    const px = z2px(pt3d.z);
+    const py = y2py(pt3d.y);
+
+    if (i === 0) ctxS.moveTo(px, py);
+    else ctxS.lineTo(px, py);
+
+    if (pt3d.y > maxHPoint.y) {
+      maxHPoint = { y: pt3d.y, z: pt3d.z, px, py };
+    }
+
+    if (i > 0) {
+      const prevPt = PhysicsEngine.getTrajectoryPoint(shot, (i - 1) / steps);
+      if (prevPt.z * pt3d.z <= 0) {
+        netClearanceY = pt3d.y;
+      }
+    }
+  }
+  ctxS.stroke();
+
+  const startPx = z2px(shot.ballFrom.z); const startPy = y2py(shot.ballFrom.y);
+  ctxS.fillStyle = '#2196f3'; ctxS.beginPath(); ctxS.arc(startPx, startPy, 4, 0, Math.PI * 2); ctxS.fill();
+
+  const endPx = z2px(shot.ballTo.z); const endPy = y2py(shot.ballTo.y);
+  ctxS.fillStyle = '#f57c00'; ctxS.beginPath(); ctxS.arc(endPx, endPy, 4, 0, Math.PI * 2); ctxS.fill();
+
+  if (maxHPoint.px > 0) {
+    ctxS.fillStyle = '#ffd54f'; ctxS.beginPath(); ctxS.arc(maxHPoint.px, maxHPoint.py, 3, 0, Math.PI * 2); ctxS.fill();
+    ctxS.font = 'bold 9px sans-serif'; ctxS.textAlign = 'center';
+    ctxS.fillText(`最高 ${maxHPoint.y.toFixed(2)}m`, maxHPoint.px, maxHPoint.py - 4);
+  }
+
+  if (netClearanceY !== null) {
+    const netYPx = y2py(netClearanceY);
+    ctxS.fillStyle = netClearanceY >= COURT.net_height ? '#81c784' : '#ff8a65';
+    ctxS.font = '9px sans-serif'; ctxS.textAlign = 'left';
+    ctxS.fillText(`過網 ${netClearanceY.toFixed(2)}m`, netX + 4, netYPx + 3);
+  }
+}
+
+// ========== 拖拽與選擇事件處理邏輯 ==========
+let isDragging = false;
+
+function getCanvasMousePos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return {
+    x: (clientX - rect.left) * (canvas.width / rect.width),
+    y: (clientY - rect.top) * (canvas.height / rect.height)
+  };
+}
+
+function getHitTarget(mPx) {
+  const shot = state.shots[state.currentShot];
+  if (!shot) return [];
+
+  const hits = [];
+
+  if (!shot.isSetup && !shot.pendingTo) {
+    const toPx = m2px(shot.ballTo.x, shot.ballTo.z);
+    const dTo = Math.hypot(mPx.x - toPx.x, mPx.y - toPx.y);
+    if (dTo <= 22) {
+      hits.push({ type: 'ball', point: 'to', dist: dTo, label: '🎯 落點 (Ball To)' });
+    }
+
+    const fromPx = m2px(shot.ballFrom.x, shot.ballFrom.z);
+    const dFrom = Math.hypot(mPx.x - fromPx.x, mPx.y - fromPx.y);
+    if (dFrom <= 22) {
+      hits.push({ type: 'ball', point: 'from', dist: dFrom, label: '🏸 擊球點 (Ball From)' });
+    }
+  }
+
+  for (const [id, pos] of Object.entries(shot.players)) {
+    const pPx = m2px(pos.x, pos.z);
+    const dP = Math.hypot(mPx.x - pPx.x, mPx.y - pPx.y);
+    if (dP <= 22) {
+      hits.push({ type: 'player', id: id, dist: dP, label: `球員 ${id}` });
+    }
+  }
+
+  hits.sort((a, b) => a.dist - b.dist);
+  return hits;
+}
+
+function selectAndStartDrag(target) {
+  state.selected = target;
+  isDragging = true;
+  render2D();
+  updateParamPanel();
+}
+
+function handlePointerDown(e) {
+  if (state.appMode === 'free') {
+    if (state.freeDraw.tool === 'pencil') {
+      const mPx = getCanvasMousePos(e);
+      const mPos = px2m(mPx.x, mPx.y);
+      state.freeDraw.currentPath = {
+        color: state.freeDraw.color,
+        width: state.freeDraw.lineWidth,
+        points: [{ x: mPos.x, z: mPos.z }]
+      };
+      isDragging = true;
+    }
+    return;
+  }
+
+  const shot = state.shots[state.currentShot];
+  if (!shot) return;
+
+  const mPx = getCanvasMousePos(e);
+
+  if (shot.pendingTo) {
+    const mPos = px2m(mPx.x, mPx.y);
+    shot.ballTo = { x: mPos.x, y: 0.1, z: mPos.z };
+    shot.pendingTo = false;
+    autoMatchShotProperties(shot);
+    applySmartPositions(shot);
+    cascadeBallPositions(state.currentShot);
+    setCurrentShot(state.currentShot);
+    return;
+  }
+
+  const hits = getHitTarget(mPx);
+  if (hits.length > 0) {
+    if (hits.length > 1 && (hits[1].dist - hits[0].dist < 6)) {
+      const options = hits.map(h => ({
+        label: h.label,
+        action: () => {
+          selectAndStartDrag(h);
+          hideMiniPopup();
+        }
+      }));
+      showMiniPopup(mPx.x, mPx.y, '選擇重疊物件', options);
+      return;
+    }
+    selectAndStartDrag(hits[0]);
+  } else {
+    state.selected = null;
+    state.snappedPlayer = null;
+    state.snappedType = null;
+    hideMiniPopup();
+    render2D();
+    updateParamPanel();
+  }
+}
+
+function handlePointerMove(e) {
+  if (!isDragging) return;
+
+  const mPx = getCanvasMousePos(e);
+  const mPos = px2m(mPx.x, mPx.y);
+
+  if (state.appMode === 'free') {
+    if (state.freeDraw.currentPath) {
+      state.freeDraw.currentPath.points.push({ x: mPos.x, z: mPos.z });
+      render2D();
+    }
+    return;
+  }
+
+  if (!state.selected) return;
+
+  const shot = state.shots[state.currentShot];
+  if (!shot) return;
+
+  const clampedX = Math.max(-COURT.width_d / 2 - 0.5, Math.min(COURT.width_d / 2 + 0.5, mPos.x));
+  const clampedZ = Math.max(-COURT.length / 2 - 0.5, Math.min(COURT.length / 2 + 0.5, mPos.z));
+
+  if (state.selected.type === 'player') {
+    let snapTarget = null;
+    const intercepts = getInterceptionInfo(shot);
+
+    if (state.snapEnabled && intercepts.length > 0) {
+      for (const ic of intercepts) {
+        if (ic.playerId === state.selected.id) {
+          const dSnap = Math.hypot(clampedX - ic.snapX, clampedZ - ic.snapZ);
+          if (dSnap < 0.6) {
+            snapTarget = { x: ic.snapX, z: ic.snapZ, type: 'intercept' };
+            break;
+          }
+        }
+      }
+    }
+
+    if (!snapTarget && state.snapEnabled && !shot.isSetup) {
+      const dTo = Math.hypot(clampedX - shot.ballTo.x, clampedZ - shot.ballTo.z);
+      if (dTo < 0.5) {
+        snapTarget = { x: shot.ballTo.x, z: shot.ballTo.z, type: 'ballTo' };
+      }
+    }
+
+    if (snapTarget) {
+      shot.players[state.selected.id].x = snapTarget.x;
+      shot.players[state.selected.id].z = snapTarget.z;
+      state.snappedPlayer = state.selected.id;
+      state.snappedType = snapTarget.type;
+    } else {
+      shot.players[state.selected.id].x = clampedX;
+      shot.players[state.selected.id].z = clampedZ;
+      state.snappedPlayer = null;
+      state.snappedType = null;
+    }
+  } else if (state.selected.type === 'ball') {
+    if (state.selected.point === 'from') {
+      shot.ballFrom.x = clampedX;
+      shot.ballFrom.z = clampedZ;
+    } else if (state.selected.point === 'to') {
+      shot.ballTo.x = clampedX;
+      shot.ballTo.z = clampedZ;
+      if (state.appMode === 'smart') {
+        applySmartPositions(shot);
+      }
+    }
+  }
+
+  cascadeBallPositions(state.currentShot);
+  render2D();
+  sync3DPositions();
+  updateParamPanel();
+}
+
+function handlePointerUp(e) {
+  if (state.appMode === 'free') {
+    if (state.freeDraw.currentPath) {
+      state.freeDraw.paths.push(state.freeDraw.currentPath);
+      state.freeDraw.currentPath = null;
+      render2D();
+    }
+  }
+  isDragging = false;
+  state.snappedPlayer = null;
+  state.snappedType = null;
+  render2D();
+}
+
+canvas.addEventListener('mousedown', handlePointerDown);
+canvas.addEventListener('mousemove', handlePointerMove);
+canvas.addEventListener('mouseup', handlePointerUp);
+canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
+canvas.addEventListener('touchend', handlePointerUp);
+
+// ========== 右側控制面板邏輯（嚴格保留結構與順序） ==========
+function updateParamPanel() {
+  const content = document.getElementById('param-content');
+  const shot = state.shots[state.currentShot];
+  if (!shot) {
+    content.innerHTML = '<div style="font-size:12px;color:#666">未選擇拍數</div>';
+    return;
+  }
+
+  if (shot.isSetup) {
+    content.innerHTML = `
+      <div class="physics-diag ok">第 0 拍：初始發接發站位佈局</div>
+      <div class="param-row">
+        <label>發球方</label>
+        <div class="param-btns">
+          <button class="${shot.server === 'A' ? 'active' : ''}" onclick="setServer('A')">A 隊發球</button>
+          <button class="${shot.server === 'B' ? 'active' : ''}" onclick="setServer('B')">B 隊發球</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  const isPress = ARC_TYPES[shot.arcType]?.isPress || false;
+  const diag = PhysicsEngine.checkPhysics(shot);
+  const playerKeys = Object.keys(shot.players);
+  const isGrid2x2 = playerKeys.length > 2;
+
+  let html = `
+    <div class="physics-diag ${diag.type}">${diag.msg}</div>
+
+    <div class="param-row">
+      <label>擊球高度</label>
+      <div class="param-btns">
+        <button class="${shot.hitLevel === 'high' ? 'active' : ''}" onclick="setHitLevel('high')">高位</button>
+        <button class="${shot.hitLevel === 'mid' ? 'active' : ''}" onclick="setHitLevel('mid')">中位</button>
+        <button class="${shot.hitLevel === 'low' ? 'active' : ''}" onclick="setHitLevel('low')">低位</button>
+      </div>
+    </div>
+
+    <div class="param-row">
+      <label>弧度類型</label>
+      <div class="param-btns">
+        ${Object.keys(ARC_TYPES).map(k => `
+          <button class="${shot.arcType === k ? 'active' : ''}" onclick="setArcType('${k}')">${ARC_TYPES[k].name}</button>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="param-row">
+      <label>頂點高度</label>
+      <div class="slider-container">
+        <button class="step-btn" ${isPress ? 'disabled' : ''} onclick="changeApexHeight(-0.2)">-</button>
+        <input type="range" min="1.5" max="7.5" step="0.1" value="${shot.apexHeight.toFixed(1)}" ${isPress ? 'disabled' : ''} oninput="setApexHeight(this.value)">
+        <button class="step-btn" ${isPress ? 'disabled' : ''} onclick="changeApexHeight(0.2)">+</button>
+        <span class="slider-val">${shot.apexHeight.toFixed(1)}m</span>
+      </div>
+    </div>
+
+    <div class="param-row">
+      <label>頂點位置</label>
+      <div class="slider-container">
+        <button class="step-btn" ${isPress ? 'disabled' : ''} onclick="changeApexPos(-0.05)">-</button>
+        <input type="range" min="0.1" max="0.9" step="0.05" value="${shot.apexPos.toFixed(2)}" ${isPress ? 'disabled' : ''} oninput="setApexPos(this.value)">
+        <button class="step-btn" ${isPress ? 'disabled' : ''} onclick="changeApexPos(0.05)">+</button>
+        <span class="slider-val">${Math.round(shot.apexPos * 100)}%</span>
+      </div>
+    </div>
+
+    <div class="param-row">
+      <label>擊球方式</label>
+      <div class="param-btns">
+        <button class="${shot.forehand ? 'active' : ''}" onclick="setForehand(true)">正手</button>
+        <button class="${!shot.forehand ? 'active' : ''}" onclick="setForehand(false)">反手</button>
+      </div>
+    </div>
+
+    <div class="param-row" style="flex-direction:column; align-items:flex-start; gap:4px; margin-top:6px;">
+      <label style="width:100%; font-weight:bold; color:#ffd54f;">球員速度</label>
+      <div style="${isGrid2x2 ? 'display:grid; grid-template-columns:1fr 1fr; gap:4px; width:100%;' : 'display:flex; flex-direction:column; gap:4px; width:100%;'}">
+        ${playerKeys.map(id => `
+          <div style="display:flex; align-items:center; background:#0d203a; padding:3px 6px; border-radius:4px; border:1px solid #1e3a5f;">
+            <span style="font-size:11px; color:#90caf9; min-width:24px;">${id}</span>
+            <div class="slider-container" style="margin-left:4px;">
+              <button class="step-btn" style="padding:1px 4px; font-size:10px;" onclick="changePlayerSpeed('${id}', -0.2)">-</button>
+              <input type="range" min="1.0" max="8.0" step="0.1" value="${shot.players[id].speed.toFixed(1)}" oninput="setPlayerSpeed('${id}', this.value)" style="accent-color:#f57c00;">
+              <button class="step-btn" style="padding:1px 4px; font-size:10px;" onclick="changePlayerSpeed('${id}', 0.2)">+</button>
+              <span class="slider-val" style="min-width:32px; font-size:10px;">${shot.players[id].speed.toFixed(1)}m/s</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  content.innerHTML = html;
+  renderSideArcCanvas();
+}
+
+function setServer(team) {
+  state.shots[0].server = team;
+  updateShot1Server();
+  render2D();
+  sync3DPositions();
+  updateParamPanel();
+}
+
+function setHitLevel(level) {
+  const shot = state.shots[state.currentShot];
+  if (!shot || shot.isSetup) return;
+  shot.hitLevel = level;
+  shot.hitLevelOverride = true;
+
+  if (level === 'high') {
+    shot.ballFrom.y = 2.3;
+  } else if (level === 'mid') {
+    shot.ballFrom.y = 1.55;
+  } else {
+    shot.ballFrom.y = 0.85;
+  }
+
+  autoMatchShotProperties(shot);
+  cascadeBallPositions(state.currentShot);
+  render2D();
+  sync3DPositions();
+  updateParamPanel();
+}
+
+function setArcType(type) {
+  const shot = state.shots[state.currentShot];
+  if (!shot || shot.isSetup) return;
+  shot.arcType = type;
+
+  if (ARC_TYPES[type]?.isPress) {
+    shot.hitLevel = 'high';
+    shot.ballFrom.y = Math.max(2.3, shot.ballFrom.y || 2.3);
+  }
+
+  shot.apexHeight = getDefaultApexForArc(type, shot.ballFrom.y, shot.ballTo.y);
+  shot.apexPos = getDefaultApexPosForArc(type);
+
+  autoMatchShotProperties(shot);
+  cascadeBallPositions(state.currentShot);
+  render2D();
+  sync3DPositions();
+  updateParamPanel();
+}
+
+function changeApexHeight(delta) {
+  const shot = state.shots[state.currentShot];
+  if (!shot || shot.isSetup || ARC_TYPES[shot.arcType]?.isPress) return;
+  shot.apexHeight = Math.max(1.5, Math.min(7.5, shot.apexHeight + delta));
+  render2D();
+  sync3DPositions();
+  updateParamPanel();
+}
+
+function setApexHeight(val) {
+  const shot = state.shots[state.currentShot];
+  if (!shot || shot.isSetup || ARC_TYPES[shot.arcType]?.isPress) return;
+  shot.apexHeight = parseFloat(val);
+  render2D();
+  sync3DPositions();
+  updateParamPanel();
+}
+
+function changeApexPos(delta) {
+  const shot = state.shots[state.currentShot];
+  if (!shot || shot.isSetup || ARC_TYPES[shot.arcType]?.isPress) return;
+  shot.apexPos = Math.max(0.1, Math.min(0.9, shot.apexPos + delta));
+  render2D();
+  sync3DPositions();
+  updateParamPanel();
+}
+
+function setApexPos(val) {
+  const shot = state.shots[state.currentShot];
+  if (!shot || shot.isSetup || ARC_TYPES[shot.arcType]?.isPress) return;
+  shot.apexPos = parseFloat(val);
+  render2D();
+  sync3DPositions();
+  updateParamPanel();
+}
+
+function setForehand(isForehand) {
+  const shot = state.shots[state.currentShot];
+  if (!shot || shot.isSetup) return;
+  shot.forehand = isForehand;
+  shot.forehandOverride = true;
+  render2D();
+  updateParamPanel();
+}
+
+function changePlayerSpeed(id, delta) {
+  const shot = state.shots[state.currentShot];
+  if (!shot || !shot.players[id]) return;
+  shot.players[id].speed = Math.max(1.0, Math.min(8.0, shot.players[id].speed + delta));
+  render2D();
+  updateParamPanel();
+}
+
+function setPlayerSpeed(id, val) {
+  const shot = state.shots[state.currentShot];
+  if (!shot || !shot.players[id]) return;
+  shot.players[id].speed = parseFloat(val);
+  render2D();
+  updateParamPanel();
+}
+
+function updateHUD(){
+  const hud = document.getElementById('hud');
+  const appModeNames = { manual: '手動模式', smart: '智能模式', free: '自由模式' };
+  const modeNames = { singles: '單打', doubles: '雙打', '2v1': '2打1', '3v1': '3打1' };
+  hud.textContent = `${modeNames[state.mode] || '單打'}回合 · ${appModeNames[state.appMode] || '手動模式'} · 共 ${Math.max(0, state.shots.length - 1)} 拍`;
+}
+
+function updateShotInfo(){
+  const el = document.getElementById('shot-info-text');
+  if(state.shots.length <= 1){ el.textContent = "0 / 0"; return; }
+  el.textContent = `${state.currentShot} / ${state.shots.length - 1}`;
+}
+
+function updateLog(){
+  const list = document.getElementById('log-list');
+  list.innerHTML = state.shots.map((s, idx) => {
+    if(idx === 0) return `<div class="popup-item ${idx===state.currentShot?'current':''}" onclick="setCurrentShot(0)">第 0 拍：初始站位 (${s.server}發球)</div>`;
+    const arcName = ARC_TYPES[s.arcType]?.name || '球路';
+    return `<div class="popup-item ${idx===state.currentShot?'current':''}" onclick="setCurrentShot(${idx})">第 ${idx} 拍：${s.striker} 隊擊出 ${arcName}</div>`;
+  }).join('');
+}
+
+// ========== 3D Three.js 渲染與引擎恢復 ==========
+let scene, camera, renderer, controls;
+let playerMeshes = {}, ballMesh3D, ballTrailMesh3D, trailPoints3D = [];
+const MAX_TRAIL_POINTS = 24;
+
+function init3D() {
+  const container = document.getElementById('container3d');
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a1929);
+
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / (window.innerHeight - 48), 0.1, 100);
+  setCameraView('45');
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight - 48);
+  renderer.shadowMap.enabled = true;
+  container.appendChild(renderer.domElement);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+  scene.add(ambientLight);
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+  dirLight.position.set(5, 12, 8);
+  dirLight.castShadow = true;
+  scene.add(dirLight);
+
+  scene.add(createCourt3D());
+  init3DBallAndTrail();
+  buildEntities();
+
+  window.addEventListener('resize', onWindowResize);
+  animate3D();
+}
+
+// 恢復 45 度視角與完整球場建模
+function setCameraView(view) {
+  if (!camera) return;
+  switch (view) {
+    case 'top':
+      camera.position.set(0, 16, 0.01);
+      camera.lookAt(0, 0, 0);
+      break;
+    case 'side':
+      camera.position.set(12, 4, 0);
+      camera.lookAt(0, 1, 0);
+      break;
+    case '45':
+      camera.position.set(0, 9, 11);
+      camera.lookAt(0, 0, 0);
+      break;
+    case 'high':
+      camera.position.set(0, 12, 8);
+      camera.lookAt(0, 0, -2);
+      break;
+    case 'back':
+      camera.position.set(0, 3, 10);
+      camera.lookAt(0, 1, 0);
+      break;
+  }
+  if (controls) controls.update();
+}
+
+function createCourt3D() {
+  const courtGroup = new THREE.Group();
+
+  const courtGeo = new THREE.PlaneGeometry(COURT.width_d, COURT.length);
+  const courtMat = new THREE.MeshStandardMaterial({ color: 0x1b5e20, roughness: 0.4 });
+  const courtMesh = new THREE.Mesh(courtGeo, courtMat);
+  courtMesh.rotation.x = -Math.PI / 2;
+  courtMesh.receiveShadow = true;
+  courtGroup.add(courtMesh);
+
+  const borderGeo = new THREE.PlaneGeometry(COURT.width_d + 2.0, COURT.length + 2.0);
+  const borderMat = new THREE.MeshStandardMaterial({ color: 0x071422, roughness: 0.8 });
+  const borderMesh = new THREE.Mesh(borderGeo, borderMat);
+  borderMesh.rotation.x = -Math.PI / 2;
+  borderMesh.position.y = -0.01;
+  courtGroup.add(borderMesh);
+
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const drawLine3D = (x1, z1, x2, z2, width = 0.04) => {
+    const dx = x2 - x1, dz = z2 - z1;
+    const len = Math.hypot(dx, dz);
+    const geo = new THREE.PlaneGeometry(width, len);
+    const mesh = new THREE.Mesh(geo, lineMat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.rotation.z = -Math.atan2(dz, dx) + Math.PI / 2;
+    mesh.position.set((x1 + x2) / 2, 0.005, (z1 + z2) / 2);
+    courtGroup.add(mesh);
+  };
+
+  const w2 = COURT.width_d / 2, l2 = COURT.length / 2;
+  const ws2 = COURT.width_s / 2;
+  drawLine3D(-w2, -l2, w2, -l2); drawLine3D(-w2, l2, w2, l2);
+  drawLine3D(-w2, -l2, -w2, l2); drawLine3D(w2, -l2, w2, l2);
+  drawLine3D(-ws2, -l2, -ws2, l2); drawLine3D(ws2, -l2, ws2, l2);
+  drawLine3D(-w2, -COURT.service_line, w2, -COURT.service_line);
+  drawLine3D(-w2, COURT.service_line, w2, COURT.service_line);
+  drawLine3D(-w2, -COURT.double_back, w2, -COURT.double_back);
+  drawLine3D(-w2, COURT.double_back, w2, COURT.double_back);
+  drawLine3D(0, -l2, 0, -COURT.service_line);
+  drawLine3D(0, COURT.service_line, 0, l2);
+
+  // 網柱與球網建模恢復
+  const postGeo = new THREE.CylinderGeometry(0.025, 0.025, COURT.net_height, 16);
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.2 });
+  
+  const post1 = new THREE.Mesh(postGeo, postMat);
+  post1.position.set(-w2 - 0.05, COURT.net_height / 2, 0);
+  courtGroup.add(post1);
+
+  const post2 = new THREE.Mesh(postGeo, postMat);
+  post2.position.set(w2 + 0.05, COURT.net_height / 2, 0);
+  courtGroup.add(post2);
+
+  const netHeight = 0.76;
+  const netGeo = new THREE.PlaneGeometry(COURT.width_d + 0.1, netHeight);
+  
+  const canvasNet = document.createElement('canvas');
+  canvasNet.width = 64; canvasNet.height = 64;
+  const ctxN = canvasNet.getContext('2d');
+  ctxN.fillStyle = 'rgba(255,255,255,0.05)'; ctxN.fillRect(0,0,64,64);
+  ctxN.strokeStyle = 'rgba(200,200,200,0.7)'; ctxN.lineWidth = 2; ctxN.strokeRect(0,0,64,64);
+  const netTexture = new THREE.CanvasTexture(canvasNet);
+  netTexture.wrapS = THREE.RepeatWrapping; netTexture.wrapT = THREE.RepeatWrapping;
+  netTexture.repeat.set(30, 4);
+
+  const netMat = new THREE.MeshStandardMaterial({ map: netTexture, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+  const netMesh = new THREE.Mesh(netGeo, netMat);
+  netMesh.position.set(0, COURT.net_height - netHeight / 2, 0);
+  courtGroup.add(netMesh);
+
+  const tapeGeo = new THREE.BoxGeometry(COURT.width_d + 0.1, 0.075, 0.02);
+  const tapeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+  const tapeMesh = new THREE.Mesh(tapeGeo, tapeMat);
+  tapeMesh.position.set(0, COURT.net_height - 0.0375, 0);
+  courtGroup.add(tapeMesh);
+
+  return courtGroup;
+}
+
+function init3DBallAndTrail() {
+  const ballGeo = new THREE.SphereGeometry(0.08, 16, 16);
+  const ballMat = new THREE.MeshStandardMaterial({ color: 0xffd54f, emissive: 0xffa000, emissiveIntensity: 0.6 });
+  ballMesh3D = new THREE.Mesh(ballGeo, ballMat);
+  scene.add(ballMesh3D);
+
+  const trailGeo = new THREE.BufferGeometry();
+  const positions = new Float32Array(MAX_TRAIL_POINTS * 3);
+  trailGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  
+  const trailMat = new THREE.LineBasicMaterial({ color: 0xffd54f, linewidth: 3, transparent: true, opacity: 0.85 });
+  ballTrailMesh3D = new THREE.Line(trailGeo, trailMat);
+  scene.add(ballTrailMesh3D);
+}
+
+function update3DBallPosition(pt, isPlaying = false) {
+  if (!ballMesh3D) return;
+  ballMesh3D.position.set(pt.x, pt.y, pt.z);
+
+  if (isPlaying) {
+    trailPoints3D.push(new THREE.Vector3(pt.x, pt.y, pt.z));
+    if (trailPoints3D.length > MAX_TRAIL_POINTS) {
+      trailPoints3D.shift();
+    }
+  } else {
+    trailPoints3D = [new THREE.Vector3(pt.x, pt.y, pt.z)];
+  }
+
+  if (ballTrailMesh3D) {
+    const positions = ballTrailMesh3D.geometry.attributes.position.array;
+    for (let i = 0; i < MAX_TRAIL_POINTS; i++) {
+      const p = trailPoints3D[Math.min(i, trailPoints3D.length - 1)];
+      positions[i * 3] = p.x;
+      positions[i * 3 + 1] = p.y;
+      positions[i * 3 + 2] = p.z;
+    }
+    ballTrailMesh3D.geometry.attributes.position.needsUpdate = true;
+  }
+}
+
+function buildEntities() {
+  const players = getPlayers(state.mode);
+  const allIds = [...players.A, ...players.B];
+
+  allIds.forEach(id => {
+    if (!playerMeshes[id]) {
+      const group = new THREE.Group();
+      const bodyGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.9, 16);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: id.startsWith('A') ? 0x2196f3 : 0xff5252 });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 0.45;
+      group.add(body);
+
+      const headGeo = new THREE.SphereGeometry(0.16, 16, 16);
+      const headMat = new THREE.MeshStandardMaterial({ color: 0xffe0b2 });
+      const head = new THREE.Mesh(headGeo, headMat);
+      head.position.y = 1.05;
+      group.add(head);
+
+      scene.add(group);
+      playerMeshes[id] = group;
+    }
+  });
+}
+
+function sync3DPositions(atEnd = false) {
+  const shot = state.shots[state.currentShot];
+  if (!shot) return;
+
+  Object.entries(shot.players).forEach(([id, p]) => {
+    if (playerMeshes[id]) {
+      playerMeshes[id].position.set(p.x, 0, p.z);
+    }
+  });
+
+  const pt = atEnd ? shot.ballTo : shot.ballFrom;
+  update3DBallPosition(pt, false);
+}
+
+function onWindowResize() {
+  if (!camera || !renderer) return;
+  camera.aspect = window.innerWidth / (window.innerHeight - 48);
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight - 48);
+  resizeCanvas();
+}
+
+function animate3D() {
+  requestAnimationFrame(animate3D);
+
+  if (state.playing) {
+    animTime += 0.016 * state.playSpeed;
+    const totalDuration = PhysicsEngine.getTotalRallyDuration();
+    if (animTime >= totalDuration) {
+      animTime = totalDuration;
+      state.playing = false;
+      document.getElementById('btn-play').classList.remove('active');
+    }
+
+    let accumulatedTime = 0;
+    let activeShotIdx = 1;
+    let localT = 0;
+
+    for (let i = 1; i < state.shots.length; i++) {
+      const dur = PhysicsEngine.getShotDuration(state.shots[i]);
+      if (animTime <= accumulatedTime + dur) {
+        activeShotIdx = i;
+        localT = (animTime - accumulatedTime) / dur;
+        break;
+      }
+      accumulatedTime += dur;
+    }
+
+    const curShot = state.shots[activeShotIdx];
+    const prevShot = state.shots[activeShotIdx - 1];
+
+    if (curShot && prevShot) {
+      Object.keys(curShot.players).forEach(id => {
+        const p1 = prevShot.players[id];
+        const p2 = curShot.players[id];
+        if (p1 && p2 && playerMeshes[id]) {
+          playerMeshes[id].position.x = p1.x + (p2.x - p1.x) * localT;
+          playerMeshes[id].position.z = p1.z + (p2.z - p1.z) * localT;
+        }
+      });
+
+      const pt = PhysicsEngine.getTrajectoryPoint(curShot, localT);
+      update3DBallPosition(pt, true);
+    }
+
+    document.getElementById('timeline').value = (animTime / totalDuration) * 100;
+  }
+
+  if (controls) controls.update();
+  if (renderer && scene && camera) renderer.render(scene, camera);
+}
+
+// ========== 事件與工具列綁定 ==========
+document.getElementById('btn-drawer').onclick = () => {
+  document.getElementById('drawer2d').classList.add('open');
+  resizeCanvas();
+};
+document.getElementById('btn-close-drawer').onclick = () => {
+  document.getElementById('drawer2d').classList.remove('open');
+};
+document.getElementById('btn-toggle-tb').onclick = (e) => {
+  e.target.classList.toggle('active');
+  document.getElementById('integrated-toolbar').classList.toggle('hidden');
+};
+
+document.getElementById('btn-log').onclick = () => {
+  document.getElementById('log-panel').classList.toggle('open');
+  document.getElementById('scripts-panel').classList.remove('open');
+};
+document.getElementById('btn-scripts').onclick = () => {
+  document.getElementById('scripts-panel').classList.toggle('open');
+  document.getElementById('log-panel').classList.remove('open');
+};
+
+document.querySelectorAll('.app-mode-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.app-mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.appMode = btn.dataset.appmode;
+
+    const freeDrawTb = document.getElementById('free-draw-toolbar');
+    const shotControls = document.getElementById('shot-controls-header');
+    if (state.appMode === 'free') {
+      freeDrawTb.classList.add('active');
+      shotControls.style.display = 'none';
+    } else {
+      freeDrawTb.classList.remove('active');
+      shotControls.style.display = 'flex';
+    }
+
+    if (state.appMode === 'smart') {
+      state.shots.forEach(s => applySmartPositions(s));
+    }
+    render2D();
+    updateHUD();
+    updateParamPanel();
+  };
+});
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.mode = btn.dataset.mode;
+    
+    Object.values(playerMeshes).forEach(m => scene.remove(m));
+    playerMeshes = {};
+    buildEntities();
+    initDemo();
+    updateHUD();
+  };
+});
+
+document.getElementById('btn-add').onclick = () => {
+  const newIdx = state.shots.length;
+  const shot = newShot(newIdx);
+  shot.pendingTo = true;
+  state.shots.push(shot);
+  setCurrentShot(newIdx);
+};
+
+document.getElementById('btn-del').onclick = () => {
+  if (state.shots.length <= 1) return;
+  state.shots.splice(state.currentShot, 1);
+  const nextIdx = Math.min(state.currentShot, state.shots.length - 1);
+  cascadeBallPositions(nextIdx);
+  setCurrentShot(nextIdx);
+};
+
+document.getElementById('btn-shot-prev').onclick = () => setCurrentShot(Math.max(0, state.currentShot - 1));
+document.getElementById('btn-shot-next').onclick = () => setCurrentShot(Math.min(state.shots.length - 1, state.currentShot + 1));
+
+document.getElementById('btn-play').onclick = (e) => {
+  state.playing = !state.playing;
+  e.target.classList.toggle('active', state.playing);
+  if (state.playing && animTime >= PhysicsEngine.getTotalRallyDuration()) animTime = 0;
+};
+document.getElementById('btn-stop').onclick = () => {
+  state.playing = false;
+  animTime = 0;
+  document.getElementById('btn-play').classList.remove('active');
+  document.getElementById('timeline').value = 0;
+  sync3DPositions();
+};
+document.getElementById('btn-step').onclick = () => {
+  const total = state.shots.length - 1;
+  if (total <= 0) return;
+  const nextShot = (state.currentShot % total) + 1;
+  setCurrentShot(nextShot, true);
+};
+
+document.getElementById('timeline').oninput = (e) => {
+  const ratio = parseFloat(e.target.value) / 100;
+  animTime = ratio * PhysicsEngine.getTotalRallyDuration();
+  state.playing = false;
+  document.getElementById('btn-play').classList.remove('active');
+};
+
+document.querySelectorAll('.speed-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.playSpeed = parseFloat(btn.dataset.speed);
+  };
+});
+
+document.querySelectorAll('.view-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    setCameraView(btn.dataset.view);
+  };
+});
+
+// 自由模式顏色選擇器
+const colorPickerList = document.getElementById('color-picker-list');
+DRAW_COLORS.forEach(c => {
+  const dot = document.createElement('div');
+  dot.className = `color-picker-dot ${c === state.freeDraw.color ? 'active' : ''}`;
+  dot.style.background = c;
+  dot.onclick = () => {
+    document.querySelectorAll('.color-picker-dot').forEach(d => d.classList.remove('active'));
+    dot.classList.add('active');
+    state.freeDraw.color = c;
+  };
+  colorPickerList.appendChild(dot);
+});
+
+document.getElementById('btn-clear-draw').onclick = () => {
+  state.freeDraw.paths = [];
+  state.freeDraw.currentPath = null;
+  render2D();
+};
+document.getElementById('btn-undo-draw').onclick = () => {
+  if (state.freeDraw.paths.length > 0) {
+    state.freeDraw.paths.pop();
+    render2D();
+  }
+};
+
+document.getElementById('btn-save').onclick = () => {
+  syncCurrentToLibrary();
+  showToast("戰術腳本已更新保存！");
+};
+
+// 分割條拖曳改變尺寸
+const resizer = document.getElementById('resizer-v');
+const panelWrap = document.getElementById('panel-wrap');
+let isResizing = false;
+
+resizer.addEventListener('mousedown', () => { isResizing = true; resizer.classList.add('dragging'); });
+window.addEventListener('mousemove', (e) => {
+  if (!isResizing) return;
+  const wrapRect = document.getElementById('drawer-body').getBoundingClientRect();
+  const newWidth = wrapRect.right - e.clientX;
+  if (newWidth >= 280 && newWidth <= 600) {
+    panelWrap.style.width = newWidth + 'px';
+    resizeCanvas();
+  }
+});
+window.addEventListener('mouseup', () => { if (isResizing) { isResizing = false; resizer.classList.remove('dragging'); } });
+
+// 初始化發動
+window.onload = () => {
+  init3D();
+  initDemo();
+  resizeCanvas();
+};
+</script>
+</body>
+</html>
