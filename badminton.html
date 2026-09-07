@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>羽球工具入口</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft JhengHei", sans-serif;
+        }
+        body {
+            background-color: #f0f4f8;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+        .header-bar {
+            width: 100%;
+            max-width: 520px;
+            background: #ffffff;
+            padding: 18px 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 32px;
+        }
+        .header-bar input {
+            width: 100%;
+            border: none;
+            outline: none;
+            font-size: 22px;
+            font-weight: 600;
+            color: #223344;
+        }
+        .container {
+            width: 100%;
+            max-width: 520px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .btn-item a {
+            display: block;
+            text-decoration: none;
+            background: #2563eb;
+            color: #fff;
+            text-align: center;
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 19px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+            transition: all 0.25s ease;
+        }
+        .btn-item a:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.32);
+        }
+        .btn-item a:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <!-- 標題欄，直接修改input內value文字即可 -->
+    <div class="header-bar">
+        <input type="text" value="羽球工具集" placeholder="請輸入標題">
+    </div>
+
+    <div class="container">
+        <div class="btn-item">
+            <a href="./1.badminton chart.html">羽球臨場統計板</a>
+        </div>
+        <div class="btn-item">
+            <a href="./2.badminton tactic board.html">羽球戰術演示版</a>
+        </div>
+    </div>
+</body>
+</html>
