@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>羽球戰術板 v4.84</title>
+<title>羽球戰術板 v4.85</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft JhengHei",sans-serif;color:#e6e6e6}
 body{background:#0a1929;overflow:hidden;height:100vh;width:100vw}
@@ -133,7 +133,7 @@ body{background:#0a1929;overflow:hidden;height:100vh;width:100vw}
 <body>
 
 <div id="topbar">
-  <div class="title">羽球戰術板 v4.84</div>
+  <div class="title">羽球戰術板 v4.85</div>
   <button class="btn" id="btn-drawer">2D 戰術板</button>
   <button class="btn active" id="btn-toggle-tb">3D 工具欄</button>
   <div class="sep"></div>
@@ -285,7 +285,7 @@ const ARC_TYPES = {
 };
 
 let scriptLibrary = [
-  { id: 'script_1', name: '預設戰術 1 (單打攻防v4.84版)', data: null }
+  { id: 'script_1', name: '預設戰術 1 (單打攻防v4.85版)', data: null }
 ];
 let currentScriptId = 'script_1';
 
@@ -423,7 +423,7 @@ function getDefaultSetupPlayers(mode) {
 
 function detectHitLevel(ballFromY) {
   if (ballFromY >= 2.0) return 'high';
-  if (ballFromY >= 1.3) return 'mid';
+  if (ballFromY >= 1.4) return 'mid';
   return 'low';
 }
 
@@ -1608,259 +1608,28 @@ function handlePointerMove(e) {
 function handlePointerUp(e) {
   if (state.appMode === 'free') {
     if (state.freeDraw.currentPath) {
-      state.freeDraw.paths.push(state.freeDraw.currentPath);
+      if (state.freeDraw.currentPath.points.length > 1) {
+        state.freeDraw.paths.push(state.freeDraw.currentPath);
+        state.freeDraw.redoPaths = [];
+      }
       state.freeDraw.currentPath = null;
       render2D();
     }
   }
   isDragging = false;
-  state.snappedPlayer = null;
-  state.snappedType = null;
-  render2D();
 }
 
 canvas.addEventListener('mousedown', handlePointerDown);
 canvas.addEventListener('mousemove', handlePointerMove);
-canvas.addEventListener('mouseup', handlePointerUp);
-canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
-canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
-canvas.addEventListener('touchend', handlePointerUp);
+window.addEventListener('mouseup', handlePointerUp);
 
-// ========== 右側控制面板邏輯（嚴格保留結構與順序） ==========
-function updateParamPanel() {
-  const content = document.getElementById('param-content');
-  const shot = state.shots[state.currentShot];
-  if (!shot) {
-    content.innerHTML = '<div style="font-size:12px;color:#666">未選擇拍數</div>';
-    return;
-  }
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handlePointerDown(e); }, { passive: false });
+canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handlePointerMove(e); }, { passive: false });
+window.addEventListener('touchend', handlePointerUp);
 
-  if (shot.isSetup) {
-    content.innerHTML = `
-      <div class="physics-diag ok">第 0 拍：初始發接發站位佈局</div>
-      <div class="param-row">
-        <label>發球方</label>
-        <div class="param-btns">
-          <button class="${shot.server === 'A' ? 'active' : ''}" onclick="setServer('A')">A 隊發球</button>
-          <button class="${shot.server === 'B' ? 'active' : ''}" onclick="setServer('B')">B 隊發球</button>
-        </div>
-      </div>
-    `;
-    return;
-  }
-
-  const isPress = ARC_TYPES[shot.arcType]?.isPress || false;
-  const diag = PhysicsEngine.checkPhysics(shot);
-  const playerKeys = Object.keys(shot.players);
-  const isGrid2x2 = playerKeys.length > 2;
-
-  let html = `
-    <div class="physics-diag ${diag.type}">${diag.msg}</div>
-
-    <div class="param-row">
-      <label>擊球高度</label>
-      <div class="param-btns">
-        <button class="${shot.hitLevel === 'high' ? 'active' : ''}" onclick="setHitLevel('high')">高位</button>
-        <button class="${shot.hitLevel === 'mid' ? 'active' : ''}" onclick="setHitLevel('mid')">中位</button>
-        <button class="${shot.hitLevel === 'low' ? 'active' : ''}" onclick="setHitLevel('low')">低位</button>
-      </div>
-    </div>
-
-    <div class="param-row">
-      <label>弧度類型</label>
-      <div class="param-btns">
-        ${Object.keys(ARC_TYPES).map(k => `
-          <button class="${shot.arcType === k ? 'active' : ''}" onclick="setArcType('${k}')">${ARC_TYPES[k].name}</button>
-        `).join('')}
-      </div>
-    </div>
-
-    <div class="param-row">
-      <label>頂點高度</label>
-      <div class="slider-container">
-        <button class="step-btn" ${isPress ? 'disabled' : ''} onclick="changeApexHeight(-0.2)">-</button>
-        <input type="range" min="1.5" max="7.5" step="0.1" value="${shot.apexHeight.toFixed(1)}" ${isPress ? 'disabled' : ''} oninput="setApexHeight(this.value)">
-        <button class="step-btn" ${isPress ? 'disabled' : ''} onclick="changeApexHeight(0.2)">+</button>
-        <span class="slider-val">${shot.apexHeight.toFixed(1)}m</span>
-      </div>
-    </div>
-
-    <div class="param-row">
-      <label>頂點位置</label>
-      <div class="slider-container">
-        <button class="step-btn" ${isPress ? 'disabled' : ''} onclick="changeApexPos(-0.05)">-</button>
-        <input type="range" min="0.1" max="0.9" step="0.05" value="${shot.apexPos.toFixed(2)}" ${isPress ? 'disabled' : ''} oninput="setApexPos(this.value)">
-        <button class="step-btn" ${isPress ? 'disabled' : ''} onclick="changeApexPos(0.05)">+</button>
-        <span class="slider-val">${Math.round(shot.apexPos * 100)}%</span>
-      </div>
-    </div>
-
-    <div class="param-row">
-      <label>擊球方式</label>
-      <div class="param-btns">
-        <button class="${shot.forehand ? 'active' : ''}" onclick="setForehand(true)">正手</button>
-        <button class="${!shot.forehand ? 'active' : ''}" onclick="setForehand(false)">反手</button>
-      </div>
-    </div>
-
-    <div class="param-row" style="flex-direction:column; align-items:flex-start; gap:4px; margin-top:6px;">
-      <label style="width:100%; font-weight:bold; color:#ffd54f;">球員速度</label>
-      <div style="${isGrid2x2 ? 'display:grid; grid-template-columns:1fr 1fr; gap:4px; width:100%;' : 'display:flex; flex-direction:column; gap:4px; width:100%;'}">
-        ${playerKeys.map(id => `
-          <div style="display:flex; align-items:center; background:#0d203a; padding:3px 6px; border-radius:4px; border:1px solid #1e3a5f;">
-            <span style="font-size:11px; color:#90caf9; min-width:24px;">${id}</span>
-            <div class="slider-container" style="margin-left:4px;">
-              <button class="step-btn" style="padding:1px 4px; font-size:10px;" onclick="changePlayerSpeed('${id}', -0.2)">-</button>
-              <input type="range" min="1.0" max="8.0" step="0.1" value="${shot.players[id].speed.toFixed(1)}" oninput="setPlayerSpeed('${id}', this.value)" style="accent-color:#f57c00;">
-              <button class="step-btn" style="padding:1px 4px; font-size:10px;" onclick="changePlayerSpeed('${id}', 0.2)">+</button>
-              <span class="slider-val" style="min-width:32px; font-size:10px;">${shot.players[id].speed.toFixed(1)}m/s</span>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-
-  content.innerHTML = html;
-  renderSideArcCanvas();
-}
-
-function setServer(team) {
-  state.shots[0].server = team;
-  updateShot1Server();
-  render2D();
-  sync3DPositions();
-  updateParamPanel();
-}
-
-function setHitLevel(level) {
-  const shot = state.shots[state.currentShot];
-  if (!shot || shot.isSetup) return;
-  shot.hitLevel = level;
-  shot.hitLevelOverride = true;
-
-  if (level === 'high') {
-    shot.ballFrom.y = 2.3;
-  } else if (level === 'mid') {
-    shot.ballFrom.y = 1.55;
-  } else {
-    shot.ballFrom.y = 0.85;
-  }
-
-  autoMatchShotProperties(shot);
-  cascadeBallPositions(state.currentShot);
-  render2D();
-  sync3DPositions();
-  updateParamPanel();
-}
-
-function setArcType(type) {
-  const shot = state.shots[state.currentShot];
-  if (!shot || shot.isSetup) return;
-  shot.arcType = type;
-
-  if (ARC_TYPES[type]?.isPress) {
-    shot.hitLevel = 'high';
-    shot.ballFrom.y = Math.max(2.3, shot.ballFrom.y || 2.3);
-  }
-
-  shot.apexHeight = getDefaultApexForArc(type, shot.ballFrom.y, shot.ballTo.y);
-  shot.apexPos = getDefaultApexPosForArc(type);
-
-  autoMatchShotProperties(shot);
-  cascadeBallPositions(state.currentShot);
-  render2D();
-  sync3DPositions();
-  updateParamPanel();
-}
-
-function changeApexHeight(delta) {
-  const shot = state.shots[state.currentShot];
-  if (!shot || shot.isSetup || ARC_TYPES[shot.arcType]?.isPress) return;
-  shot.apexHeight = Math.max(1.5, Math.min(7.5, shot.apexHeight + delta));
-  render2D();
-  sync3DPositions();
-  updateParamPanel();
-}
-
-function setApexHeight(val) {
-  const shot = state.shots[state.currentShot];
-  if (!shot || shot.isSetup || ARC_TYPES[shot.arcType]?.isPress) return;
-  shot.apexHeight = parseFloat(val);
-  render2D();
-  sync3DPositions();
-  updateParamPanel();
-}
-
-function changeApexPos(delta) {
-  const shot = state.shots[state.currentShot];
-  if (!shot || shot.isSetup || ARC_TYPES[shot.arcType]?.isPress) return;
-  shot.apexPos = Math.max(0.1, Math.min(0.9, shot.apexPos + delta));
-  render2D();
-  sync3DPositions();
-  updateParamPanel();
-}
-
-function setApexPos(val) {
-  const shot = state.shots[state.currentShot];
-  if (!shot || shot.isSetup || ARC_TYPES[shot.arcType]?.isPress) return;
-  shot.apexPos = parseFloat(val);
-  render2D();
-  sync3DPositions();
-  updateParamPanel();
-}
-
-function setForehand(isForehand) {
-  const shot = state.shots[state.currentShot];
-  if (!shot || shot.isSetup) return;
-  shot.forehand = isForehand;
-  shot.forehandOverride = true;
-  render2D();
-  updateParamPanel();
-}
-
-function changePlayerSpeed(id, delta) {
-  const shot = state.shots[state.currentShot];
-  if (!shot || !shot.players[id]) return;
-  shot.players[id].speed = Math.max(1.0, Math.min(8.0, shot.players[id].speed + delta));
-  render2D();
-  updateParamPanel();
-}
-
-function setPlayerSpeed(id, val) {
-  const shot = state.shots[state.currentShot];
-  if (!shot || !shot.players[id]) return;
-  shot.players[id].speed = parseFloat(val);
-  render2D();
-  updateParamPanel();
-}
-
-function updateHUD(){
-  const hud = document.getElementById('hud');
-  const appModeNames = { manual: '手動模式', smart: '智能模式', free: '自由模式' };
-  const modeNames = { singles: '單打', doubles: '雙打', '2v1': '2打1', '3v1': '3打1' };
-  hud.textContent = `${modeNames[state.mode] || '單打'}回合 · ${appModeNames[state.appMode] || '手動模式'} · 共 ${Math.max(0, state.shots.length - 1)} 拍`;
-}
-
-function updateShotInfo(){
-  const el = document.getElementById('shot-info-text');
-  if(state.shots.length <= 1){ el.textContent = "0 / 0"; return; }
-  el.textContent = `${state.currentShot} / ${state.shots.length - 1}`;
-}
-
-function updateLog(){
-  const list = document.getElementById('log-list');
-  list.innerHTML = state.shots.map((s, idx) => {
-    if(idx === 0) return `<div class="popup-item ${idx===state.currentShot?'current':''}" onclick="setCurrentShot(0)">第 0 拍：初始站位 (${s.server}發球)</div>`;
-    const arcName = ARC_TYPES[s.arcType]?.name || '球路';
-    return `<div class="popup-item ${idx===state.currentShot?'current':''}" onclick="setCurrentShot(${idx})">第 ${idx} 拍：${s.striker} 隊擊出 ${arcName}</div>`;
-  }).join('');
-}
-
-// ========== 3D Three.js 渲染與引擎恢復 ==========
+// ========== 3D 場景繪製引擎 (Three.js) ==========
 let scene, camera, renderer, controls;
-let playerMeshes = {}, ballMesh3D, ballTrailMesh3D, trailPoints3D = [];
-const MAX_TRAIL_POINTS = 24;
+let playerMeshes = {}, shuttleMesh, trajectoryMesh = null;
 
 function init3D() {
   const container = document.getElementById('container3d');
@@ -1868,201 +1637,144 @@ function init3D() {
   scene.background = new THREE.Color(0x0a1929);
 
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / (window.innerHeight - 48), 0.1, 100);
-  setCameraView('45');
+  camera.position.set(12, 12, 14);
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight - 48);
   renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   container.appendChild(renderer.domElement);
 
   controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 0, 0);
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
   scene.add(ambientLight);
 
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
-  dirLight.position.set(5, 12, 8);
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dirLight.position.set(10, 20, 10);
   dirLight.castShadow = true;
+  dirLight.shadow.mapSize.width = 2048;
+  dirLight.shadow.mapSize.height = 2048;
   scene.add(dirLight);
 
-  scene.add(createCourt3D());
-  init3DBallAndTrail();
+  const courtGeo = new THREE.PlaneGeometry(COURT.width_d, COURT.length);
+  const courtMat = new THREE.MeshStandardMaterial({ color: 0x1b5e20, roughness: 0.4 });
+  const courtFloor = new THREE.Mesh(courtGeo, courtMat);
+  courtFloor.rotation.x = -Math.PI / 2;
+  courtFloor.receiveShadow = true;
+  scene.add(courtFloor);
+
+  const outGeo = new THREE.PlaneGeometry(COURT.width_d + 3, COURT.length + 3);
+  const outMat = new THREE.MeshStandardMaterial({ color: 0x0f2847, roughness: 0.6 });
+  const outFloor = new THREE.Mesh(outGeo, outMat);
+  outFloor.rotation.x = -Math.PI / 2;
+  outFloor.position.y = -0.01;
+  scene.add(outFloor);
+
+  createCourtLines();
+  createNetStructure();
+  createShuttleMesh();
   buildEntities();
 
   window.addEventListener('resize', onWindowResize);
   animate3D();
 }
 
-// 恢復 45 度視角與完整球場建模
-function setCameraView(view) {
-  if (!camera) return;
-  switch (view) {
-    case 'top':
-      camera.position.set(0, 16, 0.01);
-      camera.lookAt(0, 0, 0);
-      break;
-    case 'side':
-      camera.position.set(12, 4, 0);
-      camera.lookAt(0, 1, 0);
-      break;
-    case '45':
-      camera.position.set(0, 9, 11);
-      camera.lookAt(0, 0, 0);
-      break;
-    case 'high':
-      camera.position.set(0, 12, 8);
-      camera.lookAt(0, 0, -2);
-      break;
-    case 'back':
-      camera.position.set(0, 3, 10);
-      camera.lookAt(0, 1, 0);
-      break;
-  }
-  if (controls) controls.update();
-}
-
-function createCourt3D() {
-  const courtGroup = new THREE.Group();
-
-  const courtGeo = new THREE.PlaneGeometry(COURT.width_d, COURT.length);
-  const courtMat = new THREE.MeshStandardMaterial({ color: 0x1b5e20, roughness: 0.4 });
-  const courtMesh = new THREE.Mesh(courtGeo, courtMat);
-  courtMesh.rotation.x = -Math.PI / 2;
-  courtMesh.receiveShadow = true;
-  courtGroup.add(courtMesh);
-
-  const borderGeo = new THREE.PlaneGeometry(COURT.width_d + 2.0, COURT.length + 2.0);
-  const borderMat = new THREE.MeshStandardMaterial({ color: 0x071422, roughness: 0.8 });
-  const borderMesh = new THREE.Mesh(borderGeo, borderMat);
-  borderMesh.rotation.x = -Math.PI / 2;
-  borderMesh.position.y = -0.01;
-  courtGroup.add(borderMesh);
-
-  const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const drawLine3D = (x1, z1, x2, z2, width = 0.04) => {
-    const dx = x2 - x1, dz = z2 - z1;
-    const len = Math.hypot(dx, dz);
-    const geo = new THREE.PlaneGeometry(width, len);
-    const mesh = new THREE.Mesh(geo, lineMat);
-    mesh.rotation.x = -Math.PI / 2;
-    mesh.rotation.z = -Math.atan2(dz, dx) + Math.PI / 2;
-    mesh.position.set((x1 + x2) / 2, 0.005, (z1 + z2) / 2);
-    courtGroup.add(mesh);
+function createCourtLines() {
+  const points = [];
+  const addLine = (x1, z1, x2, z2) => {
+    points.push(new THREE.Vector3(x1, 0.01, z1), new THREE.Vector3(x2, 0.01, z2));
   };
 
-  const w2 = COURT.width_d / 2, l2 = COURT.length / 2;
-  const ws2 = COURT.width_s / 2;
-  drawLine3D(-w2, -l2, w2, -l2); drawLine3D(-w2, l2, w2, l2);
-  drawLine3D(-w2, -l2, -w2, l2); drawLine3D(w2, -l2, w2, l2);
-  drawLine3D(-ws2, -l2, -ws2, l2); drawLine3D(ws2, -l2, ws2, l2);
-  drawLine3D(-w2, -COURT.service_line, w2, -COURT.service_line);
-  drawLine3D(-w2, COURT.service_line, w2, COURT.service_line);
-  drawLine3D(-w2, -COURT.double_back, w2, -COURT.double_back);
-  drawLine3D(-w2, COURT.double_back, w2, COURT.double_back);
-  drawLine3D(0, -l2, 0, -COURT.service_line);
-  drawLine3D(0, COURT.service_line, 0, l2);
+  const hw = COURT.width_d / 2, hl = COURT.length / 2;
+  addLine(-hw, -hl, hw, -hl); addLine(hw, -hl, hw, hl);
+  addLine(hw, hl, -hw, hl); addLine(-hw, hl, -hw, -hl);
+  addLine(-hw, 0, hw, 0);
+  addLine(-hw, -COURT.service_line, hw, -COURT.service_line);
+  addLine(-hw, COURT.service_line, hw, COURT.service_line);
+  addLine(-hw, -COURT.double_back, hw, -COURT.double_back);
+  addLine(-hw, COURT.double_back, hw, COURT.double_back);
+  addLine(0, -hl, 0, -COURT.service_line);
+  addLine(0, hl, 0, COURT.service_line);
 
-  // 網柱與球網建模恢復
-  const postGeo = new THREE.CylinderGeometry(0.025, 0.025, COURT.net_height, 16);
-  const postMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.2 });
-  
-  const post1 = new THREE.Mesh(postGeo, postMat);
-  post1.position.set(-w2 - 0.05, COURT.net_height / 2, 0);
-  courtGroup.add(post1);
+  const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+  const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+  const lines = new THREE.LineSegments(lineGeo, lineMat);
+  scene.add(lines);
+}
 
-  const post2 = new THREE.Mesh(postGeo, postMat);
-  post2.position.set(w2 + 0.05, COURT.net_height / 2, 0);
-  courtGroup.add(post2);
+function createNetStructure() {
+  const hw = COURT.width_d / 2;
+  const postGeo = new THREE.CylinderGeometry(0.03, 0.03, COURT.net_height, 16);
+  const postMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8 });
 
-  const netHeight = 0.76;
-  const netGeo = new THREE.PlaneGeometry(COURT.width_d + 0.1, netHeight);
-  
-  const canvasNet = document.createElement('canvas');
-  canvasNet.width = 64; canvasNet.height = 64;
-  const ctxN = canvasNet.getContext('2d');
-  ctxN.fillStyle = 'rgba(255,255,255,0.05)'; ctxN.fillRect(0,0,64,64);
-  ctxN.strokeStyle = 'rgba(200,200,200,0.7)'; ctxN.lineWidth = 2; ctxN.strokeRect(0,0,64,64);
-  const netTexture = new THREE.CanvasTexture(canvasNet);
-  netTexture.wrapS = THREE.RepeatWrapping; netTexture.wrapT = THREE.RepeatWrapping;
-  netTexture.repeat.set(30, 4);
+  const postL = new THREE.Mesh(postGeo, postMat);
+  postL.position.set(-hw, COURT.net_height / 2, 0);
+  scene.add(postL);
 
-  const netMat = new THREE.MeshStandardMaterial({ map: netTexture, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+  const postR = new THREE.Mesh(postGeo, postMat);
+  postR.position.set(hw, COURT.net_height / 2, 0);
+  scene.add(postR);
+
+  const netGeo = new THREE.PlaneGeometry(COURT.width_d, 0.8);
+  const netMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, side: THREE.DoubleSide });
   const netMesh = new THREE.Mesh(netGeo, netMat);
-  netMesh.position.set(0, COURT.net_height - netHeight / 2, 0);
-  courtGroup.add(netMesh);
+  netMesh.position.set(0, COURT.net_height - 0.4, 0);
+  scene.add(netMesh);
 
-  const tapeGeo = new THREE.BoxGeometry(COURT.width_d + 0.1, 0.075, 0.02);
-  const tapeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+  const tapeGeo = new THREE.PlaneGeometry(COURT.width_d, 0.08);
+  const tapeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
   const tapeMesh = new THREE.Mesh(tapeGeo, tapeMat);
-  tapeMesh.position.set(0, COURT.net_height - 0.0375, 0);
-  courtGroup.add(tapeMesh);
-
-  return courtGroup;
+  tapeMesh.position.set(0, COURT.net_height - 0.04, 0);
+  scene.add(tapeMesh);
 }
 
-function init3DBallAndTrail() {
-  const ballGeo = new THREE.SphereGeometry(0.08, 16, 16);
-  const ballMat = new THREE.MeshStandardMaterial({ color: 0xffd54f, emissive: 0xffa000, emissiveIntensity: 0.6 });
-  ballMesh3D = new THREE.Mesh(ballGeo, ballMat);
-  scene.add(ballMesh3D);
+function createShuttleMesh() {
+  const group = new THREE.Group();
+  const coneGeo = new THREE.ConeGeometry(0.08, 0.12, 12, 1, true);
+  const coneMat = new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide, roughness: 0.3 });
+  const cone = new THREE.Mesh(coneGeo, coneMat);
+  cone.position.y = 0.06;
+  group.add(cone);
 
-  const trailGeo = new THREE.BufferGeometry();
-  const positions = new Float32Array(MAX_TRAIL_POINTS * 3);
-  trailGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  
-  const trailMat = new THREE.LineBasicMaterial({ color: 0xffd54f, linewidth: 3, transparent: true, opacity: 0.85 });
-  ballTrailMesh3D = new THREE.Line(trailGeo, trailMat);
-  scene.add(ballTrailMesh3D);
-}
+  const headGeo = new THREE.SphereGeometry(0.04, 12, 12);
+  const headMat = new THREE.MeshStandardMaterial({ color: 0xffd54f, roughness: 0.2 });
+  const head = new THREE.Mesh(headGeo, headMat);
+  head.position.y = 0.01;
+  group.add(head);
 
-function update3DBallPosition(pt, isPlaying = false) {
-  if (!ballMesh3D) return;
-  ballMesh3D.position.set(pt.x, pt.y, pt.z);
-
-  if (isPlaying) {
-    trailPoints3D.push(new THREE.Vector3(pt.x, pt.y, pt.z));
-    if (trailPoints3D.length > MAX_TRAIL_POINTS) {
-      trailPoints3D.shift();
-    }
-  } else {
-    trailPoints3D = [new THREE.Vector3(pt.x, pt.y, pt.z)];
-  }
-
-  if (ballTrailMesh3D) {
-    const positions = ballTrailMesh3D.geometry.attributes.position.array;
-    for (let i = 0; i < MAX_TRAIL_POINTS; i++) {
-      const p = trailPoints3D[Math.min(i, trailPoints3D.length - 1)];
-      positions[i * 3] = p.x;
-      positions[i * 3 + 1] = p.y;
-      positions[i * 3 + 2] = p.z;
-    }
-    ballTrailMesh3D.geometry.attributes.position.needsUpdate = true;
-  }
+  shuttleMesh = group;
+  scene.add(shuttleMesh);
 }
 
 function buildEntities() {
   const players = getPlayers(state.mode);
-  const allIds = [...players.A, ...players.B];
+  const allIds = [...(players.A || []), ...(players.B || [])];
 
   allIds.forEach(id => {
     if (!playerMeshes[id]) {
+      const isTeamA = id.startsWith('A');
       const group = new THREE.Group();
-      const bodyGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.9, 16);
-      const bodyMat = new THREE.MeshStandardMaterial({ color: id.startsWith('A') ? 0x2196f3 : 0xff5252 });
+
+      const bodyGeo = new THREE.CylinderGeometry(0.25, 0.25, 1.2, 16);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: isTeamA ? 0x2196f3 : 0xff5252 });
       const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.position.y = 0.45;
+      body.position.y = 0.6;
+      body.castShadow = true;
       group.add(body);
 
-      const headGeo = new THREE.SphereGeometry(0.16, 16, 16);
+      const headGeo = new THREE.SphereGeometry(0.22, 16, 16);
       const headMat = new THREE.MeshStandardMaterial({ color: 0xffe0b2 });
       const head = new THREE.Mesh(headGeo, headMat);
-      head.position.y = 1.05;
+      head.position.y = 1.35;
+      head.castShadow = true;
       group.add(head);
 
-      scene.add(group);
       playerMeshes[id] = group;
+      scene.add(group);
     }
   });
 }
@@ -2071,250 +1783,636 @@ function sync3DPositions(atEnd = false) {
   const shot = state.shots[state.currentShot];
   if (!shot) return;
 
-  Object.entries(shot.players).forEach(([id, p]) => {
+  Object.entries(shot.players).forEach(([id, pos]) => {
     if (playerMeshes[id]) {
-      playerMeshes[id].position.set(p.x, 0, p.z);
+      playerMeshes[id].position.set(pos.x, 0, pos.z);
     }
   });
 
-  const pt = atEnd ? shot.ballTo : shot.ballFrom;
-  update3DBallPosition(pt, false);
+  if (shot.isSetup) {
+    const serverTeam = shot.server || 'A';
+    const serverId = (getPlayers(state.mode)[serverTeam] || [])[0];
+    const serverP = shot.players[serverId] || { x: 0, z: serverTeam==='A'?3.35:-3.35 };
+    shuttleMesh.position.set(serverP.x, 0.85, serverP.z);
+    if (trajectoryMesh) trajectoryMesh.visible = false;
+    return;
+  }
+
+  const targetPoint = atEnd ? shot.ballTo : shot.ballFrom;
+  shuttleMesh.position.set(targetPoint.x, targetPoint.y || 0.85, targetPoint.z);
+
+  update3DTrajectory(shot);
 }
 
-function onWindowResize() {
-  if (!camera || !renderer) return;
-  camera.aspect = window.innerWidth / (window.innerHeight - 48);
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight - 48);
-  resizeCanvas();
+function update3DTrajectory(shot) {
+  if (trajectoryMesh) {
+    scene.remove(trajectoryMesh);
+    trajectoryMesh = null;
+  }
+  if (!shot || shot.isSetup || shot.pendingTo) return;
+
+  const points = [];
+  const steps = 40;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const pt = PhysicsEngine.getTrajectoryPoint(shot, t);
+    points.push(new THREE.Vector3(pt.x, pt.y, pt.z));
+  }
+
+  const curve = new THREE.CatmullRomCurve3(points);
+  const tubeGeo = new THREE.TubeGeometry(curve, 64, 0.025, 8, false);
+  const tubeMat = new THREE.MeshStandardMaterial({ color: 0xffd54f, emissive: 0xf57c00, emissiveIntensity: 0.4 });
+  trajectoryMesh = new THREE.Mesh(tubeGeo, tubeMat);
+  scene.add(trajectoryMesh);
 }
 
 function animate3D() {
   requestAnimationFrame(animate3D);
+  controls.update();
 
   if (state.playing) {
-    animTime += 0.016 * state.playSpeed;
     const totalDuration = PhysicsEngine.getTotalRallyDuration();
+    animTime += 0.016 * state.playSpeed;
+
     if (animTime >= totalDuration) {
-      animTime = totalDuration;
-      state.playing = false;
-      document.getElementById('btn-play').classList.remove('active');
+      animTime = 0;
     }
 
-    let accumulatedTime = 0;
-    let activeShotIdx = 1;
-    let localT = 0;
+    const slider = document.getElementById('timeline');
+    if (slider) slider.value = (animTime / totalDuration) * 100;
 
+    let accumulatedTime = 0;
     for (let i = 1; i < state.shots.length; i++) {
-      const dur = PhysicsEngine.getShotDuration(state.shots[i]);
-      if (animTime <= accumulatedTime + dur) {
-        activeShotIdx = i;
-        localT = (animTime - accumulatedTime) / dur;
+      const s = state.shots[i];
+      const dur = PhysicsEngine.getShotDuration(s);
+      if (animTime >= accumulatedTime && animTime <= accumulatedTime + dur) {
+        state.currentShot = i;
+        const t = (animTime - accumulatedTime) / dur;
+        const pt = PhysicsEngine.getTrajectoryPoint(s, t);
+        shuttleMesh.position.set(pt.x, pt.y, pt.z);
+
+        const prevShot = state.shots[i - 1];
+        Object.keys(s.players).forEach(id => {
+          const pStart = prevShot.players[id];
+          const pEnd = s.players[id];
+          if (pStart && pEnd && playerMeshes[id]) {
+            const lerpX = pStart.x + (pEnd.x - pStart.x) * t;
+            const lerpZ = pStart.z + (pEnd.z - pStart.z) * t;
+            playerMeshes[id].position.set(lerpX, 0, lerpZ);
+          }
+        });
         break;
       }
       accumulatedTime += dur;
     }
-
-    const curShot = state.shots[activeShotIdx];
-    const prevShot = state.shots[activeShotIdx - 1];
-
-    if (curShot && prevShot) {
-      Object.keys(curShot.players).forEach(id => {
-        const p1 = prevShot.players[id];
-        const p2 = curShot.players[id];
-        if (p1 && p2 && playerMeshes[id]) {
-          playerMeshes[id].position.x = p1.x + (p2.x - p1.x) * localT;
-          playerMeshes[id].position.z = p1.z + (p2.z - p1.z) * localT;
-        }
-      });
-
-      const pt = PhysicsEngine.getTrajectoryPoint(curShot, localT);
-      update3DBallPosition(pt, true);
-    }
-
-    document.getElementById('timeline').value = (animTime / totalDuration) * 100;
+    render2D();
+    updateShotInfo();
   }
 
-  if (controls) controls.update();
-  if (renderer && scene && camera) renderer.render(scene, camera);
+  renderer.render(scene, camera);
 }
 
-// ========== 事件與工具列綁定 ==========
-document.getElementById('btn-drawer').onclick = () => {
-  document.getElementById('drawer2d').classList.add('open');
-  resizeCanvas();
-};
-document.getElementById('btn-close-drawer').onclick = () => {
-  document.getElementById('drawer2d').classList.remove('open');
-};
-document.getElementById('btn-toggle-tb').onclick = (e) => {
-  e.target.classList.toggle('active');
-  document.getElementById('integrated-toolbar').classList.toggle('hidden');
-};
+function onWindowResize() {
+  camera.aspect = window.innerWidth / (window.innerHeight - 48);
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight - 48);
+}
 
-document.getElementById('btn-log').onclick = () => {
-  document.getElementById('log-panel').classList.toggle('open');
-  document.getElementById('scripts-panel').classList.remove('open');
-};
-document.getElementById('btn-scripts').onclick = () => {
-  document.getElementById('scripts-panel').classList.toggle('open');
-  document.getElementById('log-panel').classList.remove('open');
-};
+// ========== 視角與控制功能 ==========
+function setCameraView(viewType) {
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewType));
+  switch(viewType) {
+    case 'top':
+      camera.position.set(0, 18, 0.01);
+      controls.target.set(0, 0, 0);
+      break;
+    case 'side':
+      camera.position.set(16, 3, 0);
+      controls.target.set(0, 1, 0);
+      break;
+    case '45':
+      camera.position.set(12, 12, 14);
+      controls.target.set(0, 0, 0);
+      break;
+    case 'high':
+      camera.position.set(0, 12, 12);
+      controls.target.set(0, 0, 0);
+      break;
+    case 'back':
+      camera.position.set(0, 3, 12);
+      controls.target.set(0, 1, 0);
+      break;
+  }
+  controls.update();
+}
 
-document.querySelectorAll('.app-mode-btn').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('.app-mode-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    state.appMode = btn.dataset.appmode;
-
-    const freeDrawTb = document.getElementById('free-draw-toolbar');
-    const shotControls = document.getElementById('shot-controls-header');
-    if (state.appMode === 'free') {
-      freeDrawTb.classList.add('active');
-      shotControls.style.display = 'none';
-    } else {
-      freeDrawTb.classList.remove('active');
-      shotControls.style.display = 'flex';
-    }
-
-    if (state.appMode === 'smart') {
-      state.shots.forEach(s => applySmartPositions(s));
-    }
-    render2D();
-    updateHUD();
-    updateParamPanel();
-  };
+document.querySelectorAll('.view-btn').forEach(btn => {
+  btn.addEventListener('click', () => setCameraView(btn.dataset.view));
 });
-
-document.querySelectorAll('.mode-btn').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    state.mode = btn.dataset.mode;
-    
-    Object.values(playerMeshes).forEach(m => scene.remove(m));
-    playerMeshes = {};
-    buildEntities();
-    initDemo();
-    updateHUD();
-  };
-});
-
-document.getElementById('btn-add').onclick = () => {
-  const newIdx = state.shots.length;
-  const shot = newShot(newIdx);
-  shot.pendingTo = true;
-  state.shots.push(shot);
-  setCurrentShot(newIdx);
-};
-
-document.getElementById('btn-del').onclick = () => {
-  if (state.shots.length <= 1) return;
-  state.shots.splice(state.currentShot, 1);
-  const nextIdx = Math.min(state.currentShot, state.shots.length - 1);
-  cascadeBallPositions(nextIdx);
-  setCurrentShot(nextIdx);
-};
-
-document.getElementById('btn-shot-prev').onclick = () => setCurrentShot(Math.max(0, state.currentShot - 1));
-document.getElementById('btn-shot-next').onclick = () => setCurrentShot(Math.min(state.shots.length - 1, state.currentShot + 1));
-
-document.getElementById('btn-play').onclick = (e) => {
-  state.playing = !state.playing;
-  e.target.classList.toggle('active', state.playing);
-  if (state.playing && animTime >= PhysicsEngine.getTotalRallyDuration()) animTime = 0;
-};
-document.getElementById('btn-stop').onclick = () => {
-  state.playing = false;
-  animTime = 0;
-  document.getElementById('btn-play').classList.remove('active');
-  document.getElementById('timeline').value = 0;
-  sync3DPositions();
-};
-document.getElementById('btn-step').onclick = () => {
-  const total = state.shots.length - 1;
-  if (total <= 0) return;
-  const nextShot = (state.currentShot % total) + 1;
-  setCurrentShot(nextShot, true);
-};
-
-document.getElementById('timeline').oninput = (e) => {
-  const ratio = parseFloat(e.target.value) / 100;
-  animTime = ratio * PhysicsEngine.getTotalRallyDuration();
-  state.playing = false;
-  document.getElementById('btn-play').classList.remove('active');
-};
 
 document.querySelectorAll('.speed-btn').forEach(btn => {
-  btn.onclick = () => {
+  btn.addEventListener('click', () => {
     document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     state.playSpeed = parseFloat(btn.dataset.speed);
-  };
+  });
 });
 
-document.querySelectorAll('.view-btn').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    setCameraView(btn.dataset.view);
-  };
+document.getElementById('btn-play').addEventListener('click', () => {
+  state.playing = true;
+  document.getElementById('btn-play').classList.add('active');
 });
 
-// 自由模式顏色選擇器
-const colorPickerList = document.getElementById('color-picker-list');
-DRAW_COLORS.forEach(c => {
-  const dot = document.createElement('div');
-  dot.className = `color-picker-dot ${c === state.freeDraw.color ? 'active' : ''}`;
-  dot.style.background = c;
-  dot.onclick = () => {
-    document.querySelectorAll('.color-picker-dot').forEach(d => d.classList.remove('active'));
-    dot.classList.add('active');
-    state.freeDraw.color = c;
-  };
-  colorPickerList.appendChild(dot);
+document.getElementById('btn-stop').addEventListener('click', () => {
+  state.playing = false;
+  document.getElementById('btn-play').classList.remove('active');
 });
 
-document.getElementById('btn-clear-draw').onclick = () => {
-  state.freeDraw.paths = [];
-  state.freeDraw.currentPath = null;
-  render2D();
-};
-document.getElementById('btn-undo-draw').onclick = () => {
-  if (state.freeDraw.paths.length > 0) {
-    state.freeDraw.paths.pop();
-    render2D();
+document.getElementById('btn-step').addEventListener('click', () => {
+  state.playing = false;
+  document.getElementById('btn-play').classList.remove('active');
+  const nextIdx = (state.currentShot + 1) % state.shots.length;
+  setCurrentShot(nextIdx);
+});
+
+document.getElementById('timeline').addEventListener('input', (e) => {
+  state.playing = false;
+  document.getElementById('btn-play').classList.remove('active');
+  const percent = parseFloat(e.target.value);
+  const totalDur = PhysicsEngine.getTotalRallyDuration();
+  animTime = (percent / 100) * totalDur;
+
+  let accumulatedTime = 0;
+  for (let i = 1; i < state.shots.length; i++) {
+    const s = state.shots[i];
+    const dur = PhysicsEngine.getShotDuration(s);
+    if (animTime >= accumulatedTime && animTime <= accumulatedTime + dur) {
+      setCurrentShot(i);
+      break;
+    }
+    accumulatedTime += dur;
   }
-};
+});
 
-document.getElementById('btn-save').onclick = () => {
-  syncCurrentToLibrary();
-  showToast("戰術腳本已更新保存！");
-};
+// ========== 參數面板與修改邏輯 ==========
+function updateParamPanel() {
+  const content = document.getElementById('param-content');
+  const shot = state.shots[state.currentShot];
+  if (!shot || !content) return;
 
-// 分割條拖曳改變尺寸
+  // 第 0 拍 (發接發準備站位)
+  if (shot.isSetup) {
+    let html = `<h4>戰術配置 (第 0 拍 - 發接發站位)</h4>`;
+    html += `
+      <div class="param-row" style="margin-top:6px;">
+        <label style="width:85px;">發球方：</label>
+        <div class="param-btns">
+          <button class="${shot.server === 'A' ? 'active' : ''}" onclick="setServer('A')">藍隊 (下/左)</button>
+          <button class="${shot.server === 'B' ? 'active' : ''}" onclick="setServer('B')">紅隊 (上/右)</button>
+        </div>
+      </div>
+    `;
+
+    html += `<div style="font-weight:bold; color:#ffd54f; font-size:11px; margin: 10px 0 4px 0;">球員初始移動速度 (m/s)</div>`;
+    Object.entries(shot.players).forEach(([id, p]) => {
+      const teamLabel = id.startsWith('A') ? '藍' : '紅';
+      html += `
+        <div class="param-row">
+          <label style="width:90px;">${teamLabel}隊 ${id}：</label>
+          <div class="slider-container">
+            <button class="step-btn" onclick="adjustPlayerSpeed('${id}', -0.2)">-</button>
+            <input type="range" min="1.0" max="8.0" step="0.1" value="${(p.speed || 3.0).toFixed(1)}" oninput="setPlayerSpeed('${id}', parseFloat(this.value))">
+            <button class="step-btn" onclick="adjustPlayerSpeed('${id}', 0.2)">+</button>
+            <span class="slider-val">${(p.speed || 3.0).toFixed(1)} m/s</span>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `
+      <div style="font-size:11px; color:#90caf9; margin-top:10px; line-height:1.4; background:#0d203a; padding:8px; border-radius:4px; border:1px solid #1e3a5f;">
+        💡 <strong>第 0 拍說明：</strong><br>
+        此拍為發接發準備站位，可直接在 2D 戰術板上拖拽球員圓圈調整發球與接發球位置。
+      </div>
+    `;
+    content.innerHTML = html;
+    return;
+  }
+
+  // 第 1 拍及以後 (正規擊球拍次)
+  let html = `<h4>戰術參數與物理診斷 (第 ${state.currentShot} 拍)</h4>`;
+
+  // 1. 物理診斷結果
+  const diag = PhysicsEngine.checkPhysics(shot);
+  html += `<div class="physics-diag ${diag.type}">${diag.msg}</div>`;
+
+  // 2. 球員速度 (移至物理診斷下方)
+  html += `<div style="font-weight:bold; color:#ffd54f; font-size:11px; margin: 8px 0 4px 0;">球員移動速度 (m/s)</div>`;
+  Object.entries(shot.players).forEach(([id, p]) => {
+    const isStriker = id.startsWith(shot.striker);
+    const teamLabel = id.startsWith('A') ? '藍' : '紅';
+    const roleLabel = isStriker ? '(擊球)' : '(防守)';
+    html += `
+      <div class="param-row">
+        <label style="width:90px;">${teamLabel}隊 ${id} ${roleLabel}：</label>
+        <div class="slider-container">
+          <button class="step-btn" onclick="adjustPlayerSpeed('${id}', -0.2)">-</button>
+          <input type="range" min="1.0" max="8.0" step="0.1" value="${(p.speed || 3.0).toFixed(1)}" oninput="setPlayerSpeed('${id}', parseFloat(this.value))">
+          <button class="step-btn" onclick="adjustPlayerSpeed('${id}', 0.2)">+</button>
+          <span class="slider-val">${(p.speed || 3.0).toFixed(1)} m/s</span>
+        </div>
+      </div>
+    `;
+  });
+
+  // 3. 擊球方式 (移至球員速度下方)
+  html += `
+    <div class="param-row" style="margin-top:8px;">
+      <label>擊球方式：</label>
+      <div class="param-btns">
+        <button class="${shot.arcType === 'high_arc' ? 'active' : ''}" onclick="setArcType('high_arc')">高球</button>
+        <button class="${shot.arcType === 'mid_high_arc' ? 'active' : ''}" onclick="setArcType('mid_high_arc')">平高球</button>
+        <button class="${shot.arcType === 'low_flat_arc' ? 'active' : ''}" onclick="setArcType('low_flat_arc')">平球</button>
+        <button class="${shot.arcType === 'fast_press' ? 'active' : ''}" onclick="setArcType('fast_press')">快壓</button>
+        <button class="${shot.arcType === 'soft_press' ? 'active' : ''}" onclick="setArcType('soft_press')">輕壓</button>
+      </div>
+    </div>
+  `;
+
+  // 4. 擊球高度 (其次才是擊球高度，並附新增文字說明)
+  html += `
+    <div class="param-row" style="margin-top:8px;">
+      <label>擊球高度：</label>
+      <div class="param-btns">
+        <button class="${shot.hitLevel === 'high' ? 'active' : ''}" onclick="setHitLevel('high')">高位</button>
+        <button class="${shot.hitLevel === 'mid' ? 'active' : ''}" onclick="setHitLevel('mid')">中位</button>
+        <button class="${shot.hitLevel === 'low' ? 'active' : ''}" onclick="setHitLevel('low')">低位</button>
+      </div>
+    </div>
+    <div style="font-size:10px; color:#90caf9; margin-top:2px; margin-bottom:6px; line-height:1.3; padding-left:2px;">
+      （高位2.0m以上）（中位1.4-2.0米）（低位1.4米以下）
+    </div>
+    <div class="param-row">
+      <label>擊球點高度：</label>
+      <div class="slider-container">
+        <button class="step-btn" onclick="adjustBallFromY(-0.1)">-</button>
+        <input type="range" min="0.3" max="3.0" step="0.05" value="${shot.ballFrom.y.toFixed(2)}" oninput="setBallFromY(parseFloat(this.value))">
+        <button class="step-btn" onclick="adjustBallFromY(0.1)">+</button>
+        <span class="slider-val">${shot.ballFrom.y.toFixed(2)} m</span>
+      </div>
+    </div>
+  `;
+
+  // 5. 其餘戰術細項 (擊球姿態、頂點設定)
+  html += `
+    <div class="param-row" style="margin-top:8px;">
+      <label>擊球姿態：</label>
+      <div class="param-btns">
+        <button class="${shot.forehand ? 'active' : ''}" onclick="setForehand(true)">正手</button>
+        <button class="${!shot.forehand ? 'active' : ''}" onclick="setForehand(false)">反手</button>
+      </div>
+    </div>
+    <div class="param-row">
+      <label>頂點高度：</label>
+      <div class="slider-container">
+        <button class="step-btn" onclick="adjustApexHeight(-0.2)">-</button>
+        <input type="range" min="1.2" max="8.0" step="0.1" value="${shot.apexHeight.toFixed(1)}" oninput="setApexHeight(parseFloat(this.value))">
+        <button class="step-btn" onclick="adjustApexHeight(0.2)">+</button>
+        <span class="slider-val">${shot.apexHeight.toFixed(1)} m</span>
+      </div>
+    </div>
+    <div class="param-row">
+      <label>頂點位置：</label>
+      <div class="slider-container">
+        <button class="step-btn" onclick="adjustApexPos(-0.05)">-</button>
+        <input type="range" min="0.05" max="0.95" step="0.05" value="${shot.apexPos.toFixed(2)}" oninput="setApexPos(parseFloat(this.value))">
+        <button class="step-btn" onclick="adjustApexPos(0.05)">+</button>
+        <span class="slider-val">${Math.round(shot.apexPos * 100)}%</span>
+      </div>
+    </div>
+  `;
+
+  content.innerHTML = html;
+}
+
+function setServer(team) {
+  if (state.shots[0]) {
+    state.shots[0].server = team;
+    updateShot1Server();
+    render2D();
+    sync3DPositions();
+    updateParamPanel();
+    updateLog();
+  }
+}
+
+function setPlayerSpeed(id, speed) {
+  const shot = state.shots[state.currentShot];
+  if (shot && shot.players[id]) {
+    shot.players[id].speed = parseFloat(speed.toFixed(1));
+    render2D();
+    sync3DPositions();
+    updateParamPanel();
+  }
+}
+
+function adjustPlayerSpeed(id, delta) {
+  const current = state.shots[state.currentShot]?.players[id]?.speed || 3.0;
+  setPlayerSpeed(id, Math.max(1.0, Math.min(8.0, current + delta)));
+}
+
+function setArcType(type) {
+  const shot = state.shots[state.currentShot];
+  if (shot && !shot.isSetup) {
+    shot.arcType = type;
+    autoMatchShotProperties(shot);
+    cascadeBallPositions(state.currentShot);
+    render2D();
+    sync3DPositions();
+    updateParamPanel();
+    updateLog();
+  }
+}
+
+function setHitLevel(level) {
+  const shot = state.shots[state.currentShot];
+  if (shot && !shot.isSetup) {
+    shot.hitLevel = level;
+    shot.hitLevelOverride = true;
+    if (level === 'high') shot.ballFrom.y = Math.max(2.1, shot.ballFrom.y);
+    else if (level === 'mid') shot.ballFrom.y = 1.6;
+    else shot.ballFrom.y = 0.85;
+
+    autoMatchShotProperties(shot);
+    cascadeBallPositions(state.currentShot);
+    render2D();
+    sync3DPositions();
+    updateParamPanel();
+    updateLog();
+  }
+}
+
+function setBallFromY(y) {
+  const shot = state.shots[state.currentShot];
+  if (shot && !shot.isSetup) {
+    shot.ballFrom.y = Math.max(0.3, Math.min(3.2, y));
+    shot.hitLevel = detectHitLevel(y);
+    shot.hitLevelOverride = true;
+    autoMatchShotProperties(shot);
+    cascadeBallPositions(state.currentShot);
+    render2D();
+    sync3DPositions();
+    updateParamPanel();
+    updateLog();
+  }
+}
+
+function adjustBallFromY(delta) {
+  const current = state.shots[state.currentShot]?.ballFrom?.y || 1.55;
+  setBallFromY(current + delta);
+}
+
+function setForehand(isForehand) {
+  const shot = state.shots[state.currentShot];
+  if (shot && !shot.isSetup) {
+    shot.forehand = isForehand;
+    shot.forehandOverride = true;
+    render2D();
+    sync3DPositions();
+    updateParamPanel();
+    updateLog();
+  }
+}
+
+function setApexHeight(h) {
+  const shot = state.shots[state.currentShot];
+  if (shot && !shot.isSetup) {
+    shot.apexHeight = Math.max(1.0, Math.min(8.0, h));
+    render2D();
+    sync3DPositions();
+    updateParamPanel();
+    updateLog();
+  }
+}
+
+function adjustApexHeight(delta) {
+  const current = state.shots[state.currentShot]?.apexHeight || 4.0;
+  setApexHeight(current + delta);
+}
+
+function setApexPos(pos) {
+  const shot = state.shots[state.currentShot];
+  if (shot && !shot.isSetup) {
+    shot.apexPos = Math.max(0.05, Math.min(0.95, pos));
+    render2D();
+    sync3DPositions();
+    updateParamPanel();
+    updateLog();
+  }
+}
+
+function adjustApexPos(delta) {
+  const current = state.shots[state.currentShot]?.apexPos || 0.5;
+  setApexPos(current + delta);
+}
+
+// ========== 2D 戰術板開關與分割條事件 ==========
+const btnDrawer = document.getElementById('btn-drawer');
+const btnCloseDrawer = document.getElementById('btn-close-drawer');
+const drawer2d = document.getElementById('drawer2d');
+
+function toggleDrawer(open) {
+  if (open === undefined) {
+    open = !drawer2d.classList.contains('open');
+  }
+  if (open) {
+    drawer2d.classList.add('open');
+    btnDrawer.classList.add('active');
+    setTimeout(() => {
+      resizeCanvas();
+    }, 50);
+  } else {
+    drawer2d.classList.remove('open');
+    btnDrawer.classList.remove('active');
+  }
+}
+
+btnDrawer.addEventListener('click', () => toggleDrawer());
+btnCloseDrawer.addEventListener('click', () => toggleDrawer(false));
+
 const resizer = document.getElementById('resizer-v');
 const panelWrap = document.getElementById('panel-wrap');
 let isResizing = false;
 
-resizer.addEventListener('mousedown', () => { isResizing = true; resizer.classList.add('dragging'); });
-window.addEventListener('mousemove', (e) => {
-  if (!isResizing) return;
-  const wrapRect = document.getElementById('drawer-body').getBoundingClientRect();
-  const newWidth = wrapRect.right - e.clientX;
-  if (newWidth >= 280 && newWidth <= 600) {
-    panelWrap.style.width = newWidth + 'px';
-    resizeCanvas();
+if (resizer && panelWrap) {
+  resizer.addEventListener('mousedown', (e) => {
+    isResizing = true;
+    resizer.classList.add('dragging');
+    document.body.style.userSelect = 'none';
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isResizing) return;
+    const drawerBody = document.getElementById('drawer-body');
+    if (!drawerBody) return;
+    const rect = drawerBody.getBoundingClientRect();
+    const newWidth = rect.right - e.clientX;
+    if (newWidth > 260 && newWidth < rect.width - 200) {
+      panelWrap.style.width = newWidth + 'px';
+      resizeCanvas();
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isResizing) {
+      isResizing = false;
+      resizer.classList.remove('dragging');
+      document.body.style.userSelect = '';
+      resizeCanvas();
+    }
+  });
+}
+
+// ========== 頂部與拍次控制項事件綁定 ==========
+function updateShotInfo() {
+  const infoText = document.getElementById('shot-info-text');
+  if (infoText) {
+    infoText.textContent = `${state.currentShot} / ${state.shots.length - 1}`;
+  }
+}
+
+function updateHUD() {
+  const hud = document.getElementById('hud');
+  if (hud) {
+    const modeText = state.mode === 'singles' ? '單打' : (state.mode === 'doubles' ? '雙打' : state.mode);
+    const appText = state.appMode === 'manual' ? '手動模式' : (state.appMode === 'smart' ? '智能模式' : '自由模式');
+    hud.textContent = `${modeText}回合 · ${appText} · 共 ${state.shots.length - 1} 拍`;
+  }
+}
+
+function updateLog() {
+  const list = document.getElementById('log-list');
+  if (!list) return;
+
+  let html = '';
+  state.shots.forEach((s, idx) => {
+    if (idx === 0) {
+      html += `<div class="popup-item ${idx === state.currentShot ? 'current' : ''}" onclick="setCurrentShot(0)">第 0 拍：準備站位 (發球方: ${s.server === 'A' ? '藍隊' : '紅隊'})</div>`;
+    } else {
+      const arcName = ARC_TYPES[s.arcType]?.name || s.arcType;
+      html += `<div class="popup-item ${idx === state.currentShot ? 'current' : ''}" onclick="setCurrentShot(${idx})">第 ${idx} 拍：${s.striker === 'A' ? '藍隊' : '紅隊'} ${arcName} (落點 X:${s.ballTo.x.toFixed(1)}, Z:${s.ballTo.z.toFixed(1)})</div>`;
+    }
+  });
+  list.innerHTML = html;
+}
+
+document.getElementById('btn-shot-prev').addEventListener('click', () => {
+  if (state.currentShot > 0) setCurrentShot(state.currentShot - 1);
+});
+
+document.getElementById('btn-shot-next').addEventListener('click', () => {
+  if (state.currentShot < state.shots.length - 1) setCurrentShot(state.currentShot + 1);
+});
+
+document.getElementById('btn-add').addEventListener('click', () => {
+  const shot = newShot(state.shots.length);
+  shot.pendingTo = true;
+  state.shots.push(shot);
+  cascadeBallPositions(state.shots.length - 1);
+  setCurrentShot(state.shots.length - 1);
+});
+
+document.getElementById('btn-del').addEventListener('click', () => {
+  if (state.shots.length <= 1) return;
+  if (state.currentShot === 0) { alert('第 0 拍為基礎設定，無法刪除！'); return; }
+  state.shots.splice(state.currentShot, 1);
+  const nextIdx = Math.min(state.currentShot, state.shots.length - 1);
+  cascadeBallPositions(nextIdx);
+  setCurrentShot(nextIdx);
+});
+
+document.getElementById('btn-save').addEventListener('click', () => {
+  syncCurrentToLibrary();
+  showToast("戰術腳本已更新保存！");
+});
+
+document.querySelectorAll('.app-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.app-mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.appMode = btn.dataset.appmode;
+
+    const freeTb = document.getElementById('free-draw-toolbar');
+    if (freeTb) freeTb.classList.toggle('active', state.appMode === 'free');
+
+    render2D();
+    updateHUD();
+    updateParamPanel();
+  });
+});
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.mode = btn.dataset.mode;
+
+    Object.values(playerMeshes).forEach(m => scene.remove(m));
+    playerMeshes = {};
+    buildEntities();
+
+    initDemo();
+  });
+});
+
+document.getElementById('btn-log').addEventListener('click', () => {
+  const logPanel = document.getElementById('log-panel');
+  if (logPanel) {
+    const isShow = logPanel.style.display === 'none' || logPanel.style.display === '';
+    logPanel.style.display = isShow ? 'flex' : 'none';
   }
 });
-window.addEventListener('mouseup', () => { if (isResizing) { isResizing = false; resizer.classList.remove('dragging'); } });
 
-// 初始化發動
-window.onload = () => {
+document.getElementById('btn-scripts').addEventListener('click', () => {
+  const scriptsPanel = document.getElementById('scripts-panel');
+  if (scriptsPanel) {
+    const isShow = scriptsPanel.style.display === 'none' || scriptsPanel.style.display === '';
+    scriptsPanel.style.display = isShow ? 'flex' : 'none';
+    if (isShow) updateScriptsList();
+  }
+});
+
+document.getElementById('btn-toggle-tb').addEventListener('click', () => {
+  const tb = document.getElementById('integrated-toolbar');
+  if (tb) {
+    tb.classList.toggle('hidden');
+    document.getElementById('btn-toggle-tb').classList.toggle('active', !tb.classList.contains('hidden'));
+  }
+});
+
+// 顏色選擇器初始化
+const colorListContainer = document.getElementById('color-picker-list');
+if (colorListContainer) {
+  DRAW_COLORS.forEach(c => {
+    const dot = document.createElement('div');
+    dot.className = `color-picker-dot ${c === state.freeDraw.color ? 'active' : ''}`;
+    dot.style.background = c;
+    dot.onclick = () => {
+      document.querySelectorAll('.color-picker-dot').forEach(d => d.classList.remove('active'));
+      dot.classList.add('active');
+      state.freeDraw.color = c;
+    };
+    colorListContainer.appendChild(dot);
+  });
+}
+
+// ========== 應用程式初始化啟動 ==========
+window.addEventListener('load', () => {
   init3D();
   initDemo();
   resizeCanvas();
-};
+  setCameraView('45');
+});
 </script>
 </body>
 </html>
