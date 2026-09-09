@@ -1,7 +1,7 @@
-import { getState, getAnimTime, setAnimTime, addAnimTime, getCurrentIndex, setCurrentIndex } from '../core/state.js';
+import { getState, getAnimTime, setAnimTime, getCurrentIndex, setCurrentIndex } from '../core/state.js';
 import { getShots } from '../core/state.js';
 import { getTotalRallyDuration, getShotDuration, getTrajectoryPoint } from '../core/physics.js';
-import { getPlayerMeshes, getShuttleMesh, ballTrail, updateBallTrail } from './entities.js';
+import { getPlayerMeshes, getShuttleMesh, ballTrail, updateBallTrail, clearBallTrail } from './entities.js';
 import { render2D } from '../2d/renderer.js';
 import { renderSideProfile } from '../2d/sideprofile.js';
 import { updateShotInfo } from '../ui/panels.js';
@@ -10,7 +10,11 @@ let animationId = null;
 let lastFrameTime = 0;
 
 export function startAnimation() {
-  if (animationId) return;
+  if (animationId) {
+    console.log('動畫已運行中');
+    return;
+  }
+  console.log('🏸 啟動動畫循環');
   lastFrameTime = performance.now();
   animate();
 }
@@ -19,6 +23,7 @@ export function stopAnimation() {
   if (animationId) {
     cancelAnimationFrame(animationId);
     animationId = null;
+    console.log('⏹ 動畫已停止');
   }
 }
 
@@ -32,7 +37,9 @@ function animate() {
 
   // 更新軌跡控制
   const controls = window.__controls;
-  if (controls) controls.update();
+  if (controls && controls.update) {
+    controls.update();
+  }
 
   if (state.playing) {
     const shots = getShots();
@@ -40,16 +47,29 @@ function animate() {
     let animTime = getAnimTime();
     animTime += delta * state.playSpeed;
 
+    // 檢查是否到達單拍目標時間
+    const stepTarget = window.__stepTargetTime;
+    if (stepTarget !== undefined && animTime >= stepTarget) {
+      animTime = stepTarget;
+      state.playing = false;
+      window.__stepTargetTime = undefined;
+      const playBtn = document.getElementById('btn-play');
+      if (playBtn) playBtn.textContent = '▶ 播放';
+    }
+
     if (animTime >= totalDuration) {
       animTime = totalDuration;
       state.playing = false;
+      window.__stepTargetTime = undefined;
       const playBtn = document.getElementById('btn-play');
-      if (playBtn) playBtn.textContent = '播放';
+      if (playBtn) playBtn.textContent = '▶ 播放';
     }
 
     setAnimTime(animTime);
     const slider = document.getElementById('timeline');
-    if (slider) slider.value = (animTime / totalDuration) * 100;
+    if (slider && totalDuration > 0) {
+      slider.value = (animTime / totalDuration) * 100;
+    }
 
     // 更新位置
     let accumulatedTime = 0;
@@ -63,8 +83,15 @@ function animate() {
         setCurrentIndex(i);
         const t = (animTime - accumulatedTime) / dur;
         const pt = getTrajectoryPoint(s, t);
-        if (shuttle) shuttle.position.set(pt.x, pt.y, pt.z);
+        if (shuttle) {
+          shuttle.position.set(pt.x, pt.y, pt.z);
+        }
+        // 黃色拖尾
         ballTrail.push({ x: pt.x, y: pt.y, z: pt.z });
+        const maxTrail = 60;
+        if (ballTrail.length > maxTrail) {
+          ballTrail.splice(0, ballTrail.length - maxTrail);
+        }
         updateBallTrail();
         renderSideProfile(s);
 
@@ -72,7 +99,7 @@ function animate() {
         Object.keys(s.players).forEach(id => {
           const pStart = prevShot.players[id];
           const pEnd = s.players[id];
-          if (pStart && pEnd && playerMeshes[id]) {
+          if (pStart && pEnd && playerMeshes && playerMeshes[id]) {
             const lerpX = pStart.x + (pEnd.x - pStart.x) * t;
             const lerpZ = pStart.z + (pEnd.z - pStart.z) * t;
             playerMeshes[id].position.set(lerpX, 0, lerpZ);
@@ -94,3 +121,8 @@ function animate() {
     renderer.render(scene, camera);
   }
 }
+
+// 暴露清除拖尾方法
+window.__clearTrail = function() {
+  clearBallTrail();
+};

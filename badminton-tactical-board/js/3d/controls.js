@@ -32,9 +32,9 @@ export function setCameraView(viewType) {
       camera.position.set(0, 12, 12);
       controls.target.set(0, 0, 0);
       break;
-    case 'back':
-      camera.position.set(0, 3, 12);
-      controls.target.set(0, 1, 0);
+    case 'low':
+      camera.position.set(0, 1.8, 8);
+      controls.target.set(0, 1.2, 0);
       break;
     default:
       camera.position.set(9.5, 10.5, 11.5);

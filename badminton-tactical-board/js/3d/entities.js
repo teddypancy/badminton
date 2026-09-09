@@ -5,7 +5,7 @@ import { COURT } from '../config/constants.js';
 import { getState, getCurrentShot } from '../core/state.js';
 import { getPlayers } from '../models/player.js';
 import { getTrajectoryPoint } from '../core/physics.js';
-import { getTrajectoryData } from '../core/trajectory.js';  // 新增導入
+import { getTrajectoryData } from '../core/trajectory.js';
 import { getScene } from './scene.js';
 
 let playerMeshes = {};
@@ -193,7 +193,7 @@ export function sync3DPositions(atEnd = false) {
   update3DTrajectory(shot);
 }
 
-// ========== 更新 3D 軌跡 (改用 trajectory.js) ==========
+// ========== 更新 3D 軌跡 ==========
 
 function update3DTrajectory(shot) {
   const scene = getScene();
@@ -205,7 +205,6 @@ function update3DTrajectory(shot) {
 
   if (!shot || shot.isSetup || shot.pendingTo) return;
 
-  // 使用統一的軌跡數據
   const data = getTrajectoryData(shot, 40);
   if (data.points.length < 2) return;
 
@@ -222,7 +221,7 @@ function update3DTrajectory(shot) {
   scene.add(trajectoryMesh);
 }
 
-// ========== 球體尾跡 ==========
+// ========== 球體尾跡 (黃色拖尾) ==========
 
 export function updateBallTrail() {
   const scene = getScene();
@@ -234,12 +233,17 @@ export function updateBallTrail() {
 
   if (ballTrail.length < 2) return;
 
-  const pts = ballTrail.slice(-80).map(p => new THREE.Vector3(p.x, p.y, p.z));
+  // 取最近 60 個點 (約1-2秒的軌跡)
+  const trailPoints = ballTrail.slice(-60);
+  const pts = trailPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
+  
+  // 使用 Line 線條實現黃色拖尾
   const geo = new THREE.BufferGeometry().setFromPoints(pts);
   const mat = new THREE.LineBasicMaterial({
-    color: 0xffffff,
+    color: 0xffd54f,
     transparent: true,
-    opacity: 0.45
+    opacity: 0.8,
+    linewidth: 2
   });
   trailMesh = new THREE.Line(geo, mat);
   scene.add(trailMesh);

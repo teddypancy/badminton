@@ -138,6 +138,43 @@ function drawPathOn2D(path) {
   ctx.restore();
 }
 
+// ========== 繪製球員（獨立函數） ==========
+
+function drawPlayers(shot) {
+  const state = getState();
+  if (!shot || !shot.players) return;
+  
+  Object.entries(shot.players).forEach(([id, pos]) => {
+    const p = m2px(pos.x, pos.z);
+    const sel = state.selected?.type === 'player' && state.selected.id === id;
+    const isSnapped = state.snappedPlayer === id;
+
+    ctx.fillStyle = id.startsWith('A') ? '#2196f3' : '#ff5252';
+    ctx.strokeStyle = isSnapped ? '#ff9800' : (sel ? '#ffffff' : 'transparent');
+    ctx.lineWidth = isSnapped ? 4 : 3;
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, isSnapped ? 18 : 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(id.replace('A', '').replace('B', ''), p.x, p.y);
+
+    if (isSnapped) {
+      ctx.font = 'bold 9px sans-serif';
+      ctx.fillStyle = '#ffb74d';
+      let snapLabel = '🧲磁吸';
+      if (state.snappedType === 'intercept') snapLabel = '⚡攔截吸附';
+      else if (state.snappedType === 'ballTo') snapLabel = '🎯終點吸附';
+      ctx.fillText(snapLabel, p.x, p.y + 24);
+    }
+  });
+}
+
 // ========== 主渲染函數 ==========
 
 export function render2D() {
@@ -219,11 +256,19 @@ export function render2D() {
   freeDraw.paths.forEach(path => drawPathOn2D(path));
   if (freeDraw.currentPath) drawPathOn2D(freeDraw.currentPath);
 
-  if (state.appMode === 'free') return;
+  // ---- 手繪模式 ----
+  if (state.appMode === 'free') {
+    // 只繪製球員（保留球員物件）
+    drawPlayers(shot);
+    return;
+  }
+
   if (!shot) return;
 
   // --- 等待落點設定 ---
   if (shot.pendingTo) {
+    drawPlayers(shot);
+
     const oppSide = shot.striker === 'A' ? -1 : 1;
     const centerPos = m2px(0, oppSide * 3.35);
     ctx.save();
@@ -242,7 +287,7 @@ export function render2D() {
     return;
   }
 
-  // --- 智能模式提示 ---
+  // --- 腳本模式提示 ---
   if (state.appMode === 'smart' && !shot.isSetup && !shot.pendingTo) {
     const strikerSide = shot.striker === 'A' ? 1 : -1;
     const pHome = m2px(0, strikerSide * 3.35);
@@ -285,42 +330,44 @@ export function render2D() {
   // --- 球員移動軌跡 ---
   if (state.currentShot >= 1) {
     const prevShot = state.shots[state.currentShot - 1];
-    Object.entries(shot.players).forEach(([id, pos]) => {
-      const prevPos = prevShot.players[id];
-      if (prevPos) {
-        const pPrev = m2px(prevPos.x, prevPos.z);
-        const pCurr = m2px(pos.x, pos.z);
-        ctx.save();
-        ctx.strokeStyle = id.startsWith('A') ? 'rgba(33, 150, 243, 0.45)' : 'rgba(255, 82, 82, 0.45)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 4]);
-        ctx.beginPath();
-        ctx.moveTo(pPrev.x, pPrev.y);
-        ctx.lineTo(pCurr.x, pCurr.y);
-        ctx.stroke();
-        ctx.restore();
-
-        const dist = Math.hypot(pCurr.x - pPrev.x, pCurr.y - pPrev.y);
-        if (dist > 20) {
-          const arrowAngle = Math.atan2(pCurr.y - pPrev.y, pCurr.x - pPrev.x);
+    if (prevShot && prevShot.players) {
+      Object.entries(shot.players).forEach(([id, pos]) => {
+        const prevPos = prevShot.players[id];
+        if (prevPos) {
+          const pPrev = m2px(prevPos.x, prevPos.z);
+          const pCurr = m2px(pos.x, pos.z);
           ctx.save();
-          ctx.fillStyle = id.startsWith('A') ? 'rgba(33, 150, 243, 0.6)' : 'rgba(255, 82, 82, 0.6)';
-          ctx.translate(pCurr.x - 16 * Math.cos(arrowAngle), pCurr.y - 16 * Math.sin(arrowAngle));
-          ctx.rotate(arrowAngle);
+          ctx.strokeStyle = id.startsWith('A') ? 'rgba(33, 150, 243, 0.45)' : 'rgba(255, 82, 82, 0.45)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 4]);
           ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.lineTo(-8, -4);
-          ctx.lineTo(-8, 4);
-          ctx.fill();
+          ctx.moveTo(pPrev.x, pPrev.y);
+          ctx.lineTo(pCurr.x, pCurr.y);
+          ctx.stroke();
           ctx.restore();
-        }
 
-        ctx.fillStyle = id.startsWith('A') ? 'rgba(33, 150, 243, 0.35)' : 'rgba(255, 82, 82, 0.35)';
-        ctx.beginPath();
-        ctx.arc(pPrev.x, pPrev.y, 14, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    });
+          const dist = Math.hypot(pCurr.x - pPrev.x, pCurr.y - pPrev.y);
+          if (dist > 20) {
+            const arrowAngle = Math.atan2(pCurr.y - pPrev.y, pCurr.x - pPrev.x);
+            ctx.save();
+            ctx.fillStyle = id.startsWith('A') ? 'rgba(33, 150, 243, 0.6)' : 'rgba(255, 82, 82, 0.6)';
+            ctx.translate(pCurr.x - 16 * Math.cos(arrowAngle), pCurr.y - 16 * Math.sin(arrowAngle));
+            ctx.rotate(arrowAngle);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-8, -4);
+            ctx.lineTo(-8, 4);
+            ctx.fill();
+            ctx.restore();
+          }
+
+          ctx.fillStyle = id.startsWith('A') ? 'rgba(33, 150, 243, 0.35)' : 'rgba(255, 82, 82, 0.35)';
+          ctx.beginPath();
+          ctx.arc(pPrev.x, pPrev.y, 14, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+    }
   }
 
   // --- 球路軌跡 ---
@@ -356,33 +403,33 @@ export function render2D() {
       ctx.restore();
     }
 
-    // 攔截點
+    // 攔截點（僅顯示橙色圓點，無文字）
     const intercepts = getInterceptionInfo(shot, state.mode);
     if (intercepts && intercepts.length > 0) {
       intercepts.forEach(ic => {
         const interPx = m2px(ic.snapX, ic.snapZ);
         ctx.save();
         ctx.fillStyle = '#ff9800';
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
+        ctx.shadowColor = '#ff9800';
+        ctx.shadowBlur = 8;
         ctx.beginPath();
-        ctx.arc(interPx.x, interPx.y, 6, 0, Math.PI * 2);
+        ctx.arc(interPx.x, interPx.y, 5, 0, Math.PI * 2);
         ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(interPx.x, interPx.y, 5, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.font = 'bold 10px sans-serif';
-        ctx.fillStyle = '#ffe082';
-        ctx.textAlign = 'center';
-        ctx.fillText(`⚡攔截 ${ic.height.toFixed(1)}m`, interPx.x, interPx.y - 9);
         ctx.restore();
       });
     }
 
-    // 頂點與殺球距離標記 (圖2效果核心)
+    // 頂點與殺球距離標記
     if (arcData.maxHPoint) {
       const pMax = arcData.maxHPoint;
       ctx.save();
 
-      // 畫垂直引導線
       ctx.setLineDash([2, 2]);
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
       ctx.lineWidth = 1;
@@ -391,19 +438,16 @@ export function render2D() {
       ctx.lineTo(pMax.x, pMax.y);
       ctx.stroke();
 
-      // 畫頂點
       ctx.fillStyle = '#ffd54f';
       ctx.beginPath();
       ctx.arc(pMax.x, pMax.y, 5, 0, Math.PI * 2);
       ctx.fill();
 
-      // 畫地面投影點
       ctx.strokeStyle = '#4fc3f7';
       ctx.beginPath();
       ctx.arc(pMax.baseX, pMax.baseY, 6, 0, Math.PI * 2);
       ctx.stroke();
 
-      // 標記：頂點 1.6m
       ctx.font = 'bold 10px sans-serif';
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
@@ -412,7 +456,7 @@ export function render2D() {
       ctx.restore();
     }
 
-    // 標記：殺球 0.9m (計算擊球點到網的距離)
+    // 標記：擊球距離
     const distanceToNet = Math.abs(shot.ballFrom.z);
     if (distanceToNet > 0) {
       const netLineX = m2px(0, 0).x;
@@ -452,33 +496,5 @@ export function render2D() {
   }
 
   // --- 繪製球員 ---
-  Object.entries(shot.players).forEach(([id, pos]) => {
-    const p = m2px(pos.x, pos.z);
-    const sel = state.selected?.type === 'player' && state.selected.id === id;
-    const isSnapped = state.snappedPlayer === id;
-
-    ctx.fillStyle = id.startsWith('A') ? '#2196f3' : '#ff5252';
-    ctx.strokeStyle = isSnapped ? '#ff9800' : (sel ? '#ffffff' : 'transparent');
-    ctx.lineWidth = isSnapped ? 4 : 3;
-
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, isSnapped ? 18 : 16, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(id.replace('A', '').replace('B', ''), p.x, p.y);
-
-    if (isSnapped) {
-      ctx.font = 'bold 9px sans-serif';
-      ctx.fillStyle = '#ffb74d';
-      let snapLabel = '🧲磁吸';
-      if (state.snappedType === 'intercept') snapLabel = '⚡攔截吸附';
-      else if (state.snappedType === 'ballTo') snapLabel = '🎯終點吸附';
-      ctx.fillText(snapLabel, p.x, p.y + 24);
-    }
-  });
+  drawPlayers(shot);
 }

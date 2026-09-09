@@ -12,11 +12,15 @@ import { m2px, px2m, render2D } from './renderer.js';
 import { showMiniPopup, hideMiniPopup, isPopupVisible } from './popup.js';
 import { renderSideProfile } from './sideprofile.js';
 import { sync3DPositions } from '../3d/entities.js';
-import { updateShotInfo, updateHUD, updateParamPanel, updateLog } from '../ui/panels.js';
-
-// ========== 拖拽與選擇 ==========
+import { updateShotInfo, updateHUD, updateParamPanel } from '../ui/panels.js';
+import { updateLog } from '../ui/logs.js';
 
 let isDragging = false;
+let isPointerDown = false;
+let pointerStartX = 0;
+let pointerStartY = 0;
+let longPressTimer = null;
+let isLongPress = false;
 
 function getCanvasMousePos(e) {
   const canvas = document.getElementById('court2d');
@@ -40,13 +44,13 @@ function getHitTarget(mPx) {
     const toPx = m2px(shot.ballTo.x, shot.ballTo.z);
     const dTo = Math.hypot(mPx.x - toPx.x, mPx.y - toPx.y);
     if (dTo <= 22) {
-      hits.push({ type: 'ball', point: 'to', dist: dTo, label: '🎯 落點 (Ball To)' });
+      hits.push({ type: 'ball', point: 'to', dist: dTo, label: '🎯 落點' });
     }
 
     const fromPx = m2px(shot.ballFrom.x, shot.ballFrom.z);
     const dFrom = Math.hypot(mPx.x - fromPx.x, mPx.y - fromPx.y);
     if (dFrom <= 22) {
-      hits.push({ type: 'ball', point: 'from', dist: dFrom, label: '🏸 擊球點 (Ball From)' });
+      hits.push({ type: 'ball', point: 'from', dist: dFrom, label: '🏸 擊球點' });
     }
   }
 
@@ -70,46 +74,92 @@ function selectAndStartDrag(target) {
   updateParamPanel();
 }
 
-// ========== 事件處理 ==========
-
+// ===== 處理 Pointer Down =====
 function handlePointerDown(e) {
   const state = getState();
   const shot = getCurrentShot();
+  const mPx = getCanvasMousePos(e);
+  const isRightClick = e.button === 2;
 
+  isPointerDown = true;
+  pointerStartX = mPx.x;
+  pointerStartY = mPx.y;
+  isLongPress = false;
+
+  // ---- 手繪模式 ----
   if (state.appMode === 'free') {
-    if (state.freeDraw.tool === 'pencil') {
-      const mPx = getCanvasMousePos(e);
+    const tool = state.freeDraw.tool;
+    
+    if (tool === 'pencil') {
+      // 畫筆：繪製軌跡
       const mPos = px2m(mPx.x, mPx.y);
       state.freeDraw.currentPath = {
         color: state.freeDraw.color,
-        width: state.freeDraw.lineWidth,
+        width: state.freeDraw.lineWidth || 3,
         points: [{ x: mPos.x, z: mPos.z }]
       };
       isDragging = true;
+    } else if (tool === 'select') {
+      // 選取：可拖動球員
+      const hits = getHitTarget(mPx);
+      const playerHit = hits.find(h => h.type === 'player');
+      if (playerHit) {
+        selectAndStartDrag(playerHit);
+      } else {
+        state.selected = null;
+        render2D();
+      }
+    } else if (tool === 'eraser') {
+      // 橡皮擦：刪除點擊位置的畫筆軌跡
+      const mPos = px2m(mPx.x, mPx.y);
+      const paths = state.freeDraw.paths;
+      const eraseRadius = 0.3; // 擦除半徑（公尺）
+      
+      let erased = false;
+      for (let i = paths.length - 1; i >= 0; i--) {
+        const path = paths[i];
+        if (!path.points || path.points.length === 0) continue;
+        // 檢查路徑上是否有點在擦除範圍內
+        const shouldErase = path.points.some(p => {
+          const dist = Math.hypot(p.x - mPos.x, p.z - mPos.z);
+          return dist < eraseRadius;
+        });
+        if (shouldErase) {
+          paths.splice(i, 1);
+          erased = true;
+        }
+      }
+      if (erased) render2D();
     }
     return;
   }
 
+  // ---- 腳本模式 ----
   if (!shot) return;
 
-  const mPx = getCanvasMousePos(e);
-
-  // 等待設定落點
+  // ---- 等待落點設定（單擊直接確定） ----
   if (shot.pendingTo) {
     const mPos = px2m(mPx.x, mPx.y);
-    shot.ballTo = { x: mPos.x, y: 0.1, z: mPos.z };
+    const clampedX = Math.max(-COURT.width_d / 2, Math.min(COURT.width_d / 2, mPos.x));
+    const clampedZ = Math.max(-COURT.length / 2, Math.min(COURT.length / 2, mPos.z));
+    shot.ballTo = { x: clampedX, y: 0.1, z: clampedZ };
     shot.pendingTo = false;
     const shots = getShots();
     autoMatchShotProperties(shot, shots, state.mode, state.appMode);
     applySmartPositions(shot, shots, state.mode, state.appMode);
     cascadeBallPositions(getCurrentIndex(), shots, state.mode, state.appMode);
-    setCurrentIndex(getCurrentIndex());
+    render2D();
+    sync3DPositions();
+    renderSideProfile(shot);
+    updateParamPanel();
+    updateLog();
     return;
   }
 
-  const hits = getHitTarget(mPx);
-  if (hits.length > 0) {
-    if (hits.length > 1 && (hits[1].dist - hits[0].dist < 6)) {
+  // ---- 右鍵 或 長按（移動端）彈出重疊選擇 ----
+  if (isRightClick) {
+    const hits = getHitTarget(mPx);
+    if (hits.length > 1) {
       const options = hits.map(h => ({
         label: h.label,
         action: () => {
@@ -120,6 +170,32 @@ function handlePointerDown(e) {
       showMiniPopup(mPx.x, mPx.y, '選擇重疊物件', options);
       return;
     }
+    return;
+  }
+
+  // ---- 移動端長按檢測 ----
+  if (e.touches) {
+    longPressTimer = setTimeout(() => {
+      isLongPress = true;
+      const hits = getHitTarget(mPx);
+      if (hits.length > 1) {
+        const options = hits.map(h => ({
+          label: h.label,
+          action: () => {
+            selectAndStartDrag(h);
+            hideMiniPopup();
+          }
+        }));
+        showMiniPopup(mPx.x, mPx.y, '選擇重疊物件', options);
+      } else if (hits.length === 1) {
+        selectAndStartDrag(hits[0]);
+      }
+    }, 600);
+  }
+
+  // ---- 單擊選中 ----
+  const hits = getHitTarget(mPx);
+  if (hits.length > 0) {
     selectAndStartDrag(hits[0]);
   } else {
     state.selected = null;
@@ -131,6 +207,7 @@ function handlePointerDown(e) {
   }
 }
 
+// ===== 處理 Pointer Move =====
 function handlePointerMove(e) {
   if (!isDragging) return;
 
@@ -138,6 +215,7 @@ function handlePointerMove(e) {
   const mPx = getCanvasMousePos(e);
   const mPos = px2m(mPx.x, mPx.y);
 
+  // ---- 手繪模式 ----
   if (state.appMode === 'free') {
     if (state.freeDraw.currentPath) {
       state.freeDraw.currentPath.points.push({ x: mPos.x, z: mPos.z });
@@ -158,11 +236,12 @@ function handlePointerMove(e) {
     let snapTarget = null;
     const intercepts = getInterceptionInfo(shot, state.mode);
 
+    // 吸附範圍 0.2m
     if (state.snapEnabled && intercepts.length > 0) {
       for (const ic of intercepts) {
         if (ic.playerId === state.selected.id) {
           const dSnap = Math.hypot(clampedX - ic.snapX, clampedZ - ic.snapZ);
-          if (dSnap < 0.6) {
+          if (dSnap < 0.2) {
             snapTarget = { x: ic.snapX, z: ic.snapZ, type: 'intercept' };
             break;
           }
@@ -172,7 +251,7 @@ function handlePointerMove(e) {
 
     if (!snapTarget && state.snapEnabled && !shot.isSetup) {
       const dTo = Math.hypot(clampedX - shot.ballTo.x, clampedZ - shot.ballTo.z);
-      if (dTo < 0.5) {
+      if (dTo < 0.2) {
         snapTarget = { x: shot.ballTo.x, z: shot.ballTo.z, type: 'ballTo' };
       }
     }
@@ -210,8 +289,22 @@ function handlePointerMove(e) {
   updateParamPanel();
 }
 
+// ===== 處理 Pointer Up =====
 function handlePointerUp(e) {
   const state = getState();
+
+  if (longPressTimer) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+
+  if (isLongPress) {
+    isLongPress = false;
+    isDragging = false;
+    isPointerDown = false;
+    return;
+  }
+
   if (state.appMode === 'free') {
     if (state.freeDraw.currentPath) {
       if (state.freeDraw.currentPath.points.length > 1) {
@@ -222,17 +315,32 @@ function handlePointerUp(e) {
       render2D();
     }
   }
+
   isDragging = false;
+  isPointerDown = false;
 }
 
-// ========== 事件綁定 ==========
-
+// ===== 事件綁定 =====
 export function initInteractions() {
   const canvas = document.getElementById('court2d');
 
-  canvas.addEventListener('mousedown', handlePointerDown);
-  canvas.addEventListener('mousemove', handlePointerMove);
-  window.addEventListener('mouseup', handlePointerUp);
+  canvas.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    handlePointerDown(e);
+  });
+
+  canvas.addEventListener('mousemove', (e) => {
+    e.preventDefault();
+    handlePointerMove(e);
+  });
+
+  window.addEventListener('mouseup', (e) => {
+    handlePointerUp(e);
+  });
+
+  canvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+  });
 
   canvas.addEventListener('touchstart', (e) => {
     e.preventDefault();
@@ -244,9 +352,10 @@ export function initInteractions() {
     handlePointerMove(e);
   }, { passive: false });
 
-  window.addEventListener('touchend', handlePointerUp);
+  window.addEventListener('touchend', (e) => {
+    handlePointerUp(e);
+  });
 
-  // 點擊外部關閉彈窗
   window.addEventListener('click', (e) => {
     const popup = document.getElementById('mini-selector-popup');
     const canvas = document.getElementById('court2d');

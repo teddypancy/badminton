@@ -59,7 +59,7 @@ export function autoMatchShotProperties(shot, shots, mode, appMode) {
     }
   }
 
-  // 智能模式：自動調整擊球高度
+  // 腳本模式（原智能模式）：自動調整擊球高度
   if (appMode === 'smart' && !shot.hitLevelOverride && idx !== 1) {
     if (shot.arcType === 'fast_press' || shot.arcType === 'soft_press') {
       shot.hitLevel = 'high';
@@ -85,7 +85,7 @@ export function autoMatchShotProperties(shot, shots, mode, appMode) {
 }
 
 /**
- * 智能定位 (智能模式)
+ * 智能定位 (腳本模式)
  */
 export function applySmartPositions(shot, shots, mode, appMode) {
   if (appMode !== 'smart' || shot.isSetup || shot.pendingTo) return;
@@ -186,7 +186,39 @@ export function updateShot1Server(shots, mode) {
 }
 
 /**
- * 創建新拍
+ * 獲取默認球員站位（用於新增拍時初始化）
+ */
+function getDefaultPlayerPositions(mode, striker, defender, prevShot) {
+  const players = getPlayers(mode);
+  const strikerSide = getTeamDirection(striker);
+  const defenderSide = getTeamDirection(defender);
+  const result = {};
+
+  // 擊球方默認站位
+  const strikerIds = players[striker] || [];
+  strikerIds.forEach((id, pIdx) => {
+    if (pIdx === 0) {
+      result[id] = { x: 0, z: strikerSide * 3.35, speed: 3.0 };
+    } else {
+      result[id] = { x: pIdx === 1 ? -1.25 : 1.25, z: strikerSide * 4.5, speed: 3.0 };
+    }
+  });
+
+  // 防守方默認站位
+  const defenderIds = players[defender] || [];
+  defenderIds.forEach((id, pIdx) => {
+    if (pIdx === 0) {
+      result[id] = { x: 0, z: defenderSide * 3.35, speed: 3.0 };
+    } else {
+      result[id] = { x: pIdx === 1 ? -1.25 : 1.25, z: defenderSide * 4.5, speed: 3.0 };
+    }
+  });
+
+  return result;
+}
+
+/**
+ * 創建新拍（修復版：確保球員不消失）
  */
 export function newShot(index, shots, mode, appMode, prevShotData = null) {
   const prev = prevShotData || (index > 0 ? shots[index - 1] : null);
@@ -257,18 +289,28 @@ export function newShot(index, shots, mode, appMode, prevShotData = null) {
   } else {
     const isSmart = appMode === 'smart';
     const strikerSide = getTeamDirection(striker);
-    const homeZ = strikerSide * 3.35;
 
-    players[striker].forEach((id) => {
-      shot.players[id] = { x: 0, z: homeZ, speed: 3.0 };
+    // ***** 修復關鍵：確保 players 永遠有值 *****
+    // 1. 先從上一拍複製球員數據（如果有）
+    if (prev && prev.players) {
+      Object.keys(prev.players).forEach(id => {
+        shot.players[id] = { ...prev.players[id], speed: prev.players[id].speed || 3.0 };
+      });
+    }
+
+    // 2. 確保所有當前模式下的球員都存在
+    const allPlayerIds = [...(players[striker] || []), ...(players[defender] || [])];
+    allPlayerIds.forEach(id => {
+      if (!shot.players[id]) {
+        // 如果沒有從上一拍複製到，使用默認站位
+        const isStriker = id.startsWith(striker);
+        const side = isStriker ? strikerSide : getTeamDirection(defender);
+        const zBase = side * 3.35;
+        shot.players[id] = { x: 0, z: zBase, speed: 3.0 };
+      }
     });
 
-    players[defender].forEach((id) => {
-      shot.players[id] = prev && prev.players[id] && !isSmart ?
-        { ...prev.players[id], speed: 3.0 } :
-        { x: 0, z: getTeamDirection(defender) * 3.35, speed: 3.0 };
-    });
-
+    // 3. 如果是腳本模式，應用智能定位（覆蓋站位）
     if (isSmart) {
       applySmartPositions(shot, shots, mode, appMode);
     }
@@ -279,49 +321,16 @@ export function newShot(index, shots, mode, appMode, prevShotData = null) {
 }
 
 /**
- * 初始化示範腳本
+ * 初始化示範腳本 - 僅保留第0拍
  */
 export function initDemo(shots, mode, appMode) {
-  // 清空 shots 並重新創建
+  // 清空 shots
   shots.length = 0;
 
+  // 僅創建第0拍（發接發站位）
   const s0 = newShot(0, shots, mode, appMode);
   s0.server = 'A';
   shots.push(s0);
-
-  const s1 = newShot(1, shots, mode, appMode);
-  s1.hitLevel = 'low';
-  s1.ballFrom.y = LIMITS.serveHeight;
-  s1.arcType = 'low_flat_arc';
-  s1.ballTo = { x: -1.25, y: 0.15, z: -2.2 };
-  shots.push(s1);
-
-  const s2 = newShot(2, shots, mode, appMode);
-  s2.hitLevel = 'high';
-  s2.ballFrom.y = 2.3;
-  s2.arcType = 'high_arc';
-  s2.ballTo = { x: 1.8, y: 0.1, z: 5.5 };
-  shots.push(s2);
-
-  const s3 = newShot(3, shots, mode, appMode);
-  s3.hitLevel = 'high';
-  s3.ballFrom.y = 2.4;
-  s3.arcType = 'fast_press';
-  s3.ballTo = { x: -1.5, y: 0.1, z: -4.8 };
-  shots.push(s3);
-
-  const s4 = newShot(4, shots, mode, appMode);
-  s4.hitLevel = 'high';
-  s4.ballFrom.y = 2.3;
-  s4.arcType = 'soft_press';
-  s4.ballTo = { x: 0, y: 0.1, z: 2.1 };
-  shots.push(s4);
-
-  updateShot1Server(shots, mode);
-  shots.forEach(s => {
-    autoMatchShotProperties(s, shots, mode, appMode);
-    applySmartPositions(s, shots, mode, appMode);
-  });
 
   return shots;
 }

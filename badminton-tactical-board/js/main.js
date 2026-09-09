@@ -1,9 +1,8 @@
 // ========== 應用入口 ==========
 
-// 導入所有模組
 import { COURT, ARC_TYPES, DRAW_COLORS } from './config/constants.js';
 import { showToast } from './utils/toast.js';
-import { getState, setState, getShots, getCurrentShot, getCurrentIndex, setCurrentIndex, pushHistory, undo, redo } from './core/state.js';
+import { getState, setState, getShots, getCurrentShot, getCurrentIndex, setCurrentIndex, pushHistory } from './core/state.js';
 import { getPlayers, getDefaultSetupPlayers, detectHitLevel } from './models/player.js';
 import { getTrajectoryPoint, getShotDuration, getTotalRallyDuration, checkPhysics, getInterceptionInfo } from './core/physics.js';
 import { newShot, initDemo, autoMatchShotProperties, applySmartPositions, cascadeBallPositions, updateShot1Server } from './models/shot.js';
@@ -15,12 +14,12 @@ import { initScene, getScene, getCamera, getRenderer, getControls } from './3d/s
 import { buildCourt, createShuttle, buildPlayers, sync3DPositions, clearBallTrail, getPlayerMeshes } from './3d/entities.js';
 import { startAnimation, stopAnimation } from './3d/animation.js';
 import { setCameraView } from './3d/controls.js';
-import { updateShotInfo, updateHUD, updateParamPanel, updateLog } from './ui/panels.js';
-import { getScriptLibrary, getCurrentScriptId, syncCurrentToLibrary, loadScriptFromLibrary, addScript, deleteScript, editScriptName, updateScriptsList, exportAllScripts, importScripts } from './ui/scripts.js';
+import { updateShotInfo, updateHUD, updateParamPanel } from './ui/panels.js';
+import { updateLog } from './ui/logs.js';
+import { getScriptLibrary, getCurrentScriptId, syncCurrentToLibrary, loadScriptFromLibrary, addScript, deleteScript, editScriptName, updateScriptsList, exportAllScripts, importScripts, getCurrentScriptName, getScriptTypeLabel } from './ui/scripts.js';
 
 // ========== 暴露全局函數給 HTML ==========
 
-// 拍次操作
 window.newShot = newShot;
 window.initDemo = initDemo;
 window.autoMatchShotProperties = autoMatchShotProperties;
@@ -28,14 +27,12 @@ window.applySmartPositions = applySmartPositions;
 window.cascadeBallPositions = cascadeBallPositions;
 window.updateShot1Server = updateShot1Server;
 
-// 狀態操作
 window.getState = getState;
 window.getShots = getShots;
 window.getCurrentShot = getCurrentShot;
 window.getCurrentIndex = getCurrentIndex;
 window.setCurrentIndex = setCurrentIndex;
 
-// 2D
 window.resizeCanvas = resizeCanvas;
 window.render2D = render2D;
 window.m2px = m2px;
@@ -43,19 +40,16 @@ window.px2m = px2m;
 window.showMiniPopup = showMiniPopup;
 window.hideMiniPopup = hideMiniPopup;
 
-// 3D
 window.sync3DPositions = sync3DPositions;
 window.setCameraView = setCameraView;
 window.clearBallTrail = clearBallTrail;
 
-// UI
 window.updateShotInfo = updateShotInfo;
 window.updateHUD = updateHUD;
 window.updateParamPanel = updateParamPanel;
 window.updateLog = updateLog;
 window.showToast = showToast;
 
-// 腳本管理
 window.getScriptLibrary = getScriptLibrary;
 window.getCurrentScriptId = getCurrentScriptId;
 window.syncCurrentToLibrary = syncCurrentToLibrary;
@@ -66,8 +60,10 @@ window.editScriptName = editScriptName;
 window.updateScriptsList = updateScriptsList;
 window.exportAllScripts = exportAllScripts;
 window.importScripts = importScripts;
+window.getCurrentScriptName = getCurrentScriptName;
+window.getScriptTypeLabel = getScriptTypeLabel;
 
-// 參數操作 (由 HTML 調用)
+// ===== 參數操作 =====
 window.setServer = function(team) {
   const state = getState();
   const shots = getShots();
@@ -201,7 +197,6 @@ window.setCurrentShot = function(idx, atEnd = false) {
   updateLog();
 };
 
-// 腳本名稱編輯輔助
 window.promptEditScript = function(id) {
   const script = getScriptLibrary().find(s => s.id === id);
   if (!script) return;
@@ -211,117 +206,210 @@ window.promptEditScript = function(id) {
   }
 };
 
+function updateLogButton() {
+  const btn = document.getElementById('btn-log');
+  if (btn) {
+    const name = getCurrentScriptName();
+    btn.textContent = `📋 ${name}`;
+  }
+}
+
 // ========== 初始化 ==========
 
 function init() {
-  // 1. 3D 場景
-  initScene();
+  console.log('🏸 初始化開始...');
+
+  window.__animTime = 0;
+  window.__stepTargetTime = undefined;
+
+  const sceneResult = initScene();
+  if (!sceneResult) {
+    console.error('3D場景初始化失敗！');
+    return;
+  }
 
   const scene = getScene();
   const camera = getCamera();
   const controls = getControls();
 
-  // 保存引用供 animation 使用
   window.__scene = scene;
   window.__camera = camera;
   window.__controls = controls;
   window.__renderer = getRenderer();
 
-  // 2. 3D 實體
+  console.log('✅ 3D場景初始化完成');
+
   buildCourt();
   createShuttle();
   buildPlayers();
 
-  // 3. 2D 初始化
+  console.log('✅ 3D實體建立完成');
+
   initSideProfile();
   initInteractions();
 
-  // 4. 載入示範腳本
   const state = getState();
   state.shots = [];
   initDemo(state.shots, state.mode, state.appMode);
 
-  // 5. 設置當前拍
   window.setCurrentShot(0);
-
-  // 6. 同步到腳本庫
   syncCurrentToLibrary();
 
-  // 7. 啟動動畫
+  setTimeout(() => {
+    setCameraView('45');
+  }, 50);
+
   startAnimation();
-
-  // 8. 綁定 UI 事件
   bindUIEvents();
+  updateLogButton();
+  updateHUD();
 
-  // 9. 默認視角
-  setCameraView('45');
+  // 3D控制台默認收起，按鈕不高亮
+  const tb = document.getElementById('integrated-toolbar');
+  if (tb) tb.classList.add('hidden');
+  const tbBtn = document.getElementById('btn-toggle-tb');
+  if (tbBtn) tbBtn.classList.remove('active');
 
-  console.log('🏸 羽球戰術板 v4.86 已初始化 (模組化版本)');
+  // 手繪工具欄默認隱藏
+  const freeTb = document.getElementById('free-draw-toolbar');
+  if (freeTb) freeTb.style.display = 'none';
+
+  const renderer = window.__renderer;
+  if (renderer && scene && camera) {
+    renderer.render(scene, camera);
+  }
+
+  console.log('🏸 羽球戰術板 v0.1 已初始化');
 }
 
 // ========== UI 事件綁定 ==========
 
 function bindUIEvents() {
-  // 2D 抽屜
-  document.getElementById('btn-drawer').addEventListener('click', () => {
-    const drawer = document.getElementById('drawer2d');
+  const drawerBtn = document.getElementById('btn-drawer');
+  const drawer = document.getElementById('drawer2d');
+
+  drawer.classList.remove('open');
+
+  drawerBtn.addEventListener('click', () => {
     drawer.classList.toggle('open');
+    drawerBtn.classList.toggle('active', drawer.classList.contains('open'));
     if (drawer.classList.contains('open')) {
       setTimeout(resizeCanvas, 50);
     }
   });
 
   document.getElementById('btn-close-drawer').addEventListener('click', () => {
-    document.getElementById('drawer2d').classList.remove('open');
+    drawer.classList.remove('open');
+    drawerBtn.classList.remove('active');
   });
 
-  // 3D 工具欄
+  // 3D控制台 - 默認收起
   document.getElementById('btn-toggle-tb').addEventListener('click', () => {
     const tb = document.getElementById('integrated-toolbar');
     tb.classList.toggle('hidden');
     document.getElementById('btn-toggle-tb').classList.toggle('active', !tb.classList.contains('hidden'));
   });
 
-  // 播放控制
-  document.getElementById('btn-play').addEventListener('click', () => {
+  // ===== 播放控制 =====
+  const playBtn = document.getElementById('btn-play');
+  const stopBtn = document.getElementById('btn-stop');
+  const stepBtn = document.getElementById('btn-step');
+
+  playBtn.addEventListener('click', () => {
     const state = getState();
     const shots = getShots();
+    const totalDur = getTotalRallyDuration(shots);
+    
     if (state.playing) {
       state.playing = false;
-      document.getElementById('btn-play').textContent = '播放';
+      playBtn.textContent = '▶ 播放';
     } else {
-      const totalDur = getTotalRallyDuration(shots);
       if (window.__animTime >= totalDur) window.__animTime = 0;
       state.playing = true;
-      document.getElementById('btn-play').textContent = '暫停';
+      playBtn.textContent = '⏸ 暫停';
     }
   });
 
-  document.getElementById('btn-stop').addEventListener('click', () => {
+  stopBtn.addEventListener('click', () => {
     const state = getState();
     state.playing = false;
     window.__animTime = 0;
-    document.getElementById('btn-play').textContent = '播放';
+    window.__stepTargetTime = undefined;
+    playBtn.textContent = '▶ 播放';
     document.getElementById('timeline').value = 0;
     window.setCurrentShot(0, true);
     clearBallTrail();
     renderSideProfile(getCurrentShot());
+    if (window.__clearTrail) window.__clearTrail();
   });
 
-  document.getElementById('btn-step').addEventListener('click', () => {
+  let stepModeActive = false;
+  stepBtn.addEventListener('click', () => {
     const state = getState();
-    state.playing = false;
-    document.getElementById('btn-play').textContent = '播放';
-    clearBallTrail();
-    const nextIdx = Math.min(getCurrentIndex() + 1, getShots().length - 1);
-    window.setCurrentShot(nextIdx, true);
+    const shots = getShots();
+    const totalDur = getTotalRallyDuration(shots);
+    
+    stepModeActive = !stepModeActive;
+    stepBtn.classList.toggle('active', stepModeActive);
+
+    if (stepModeActive) {
+      if (state.playing) {
+        state.playing = false;
+        playBtn.textContent = '▶ 播放';
+      }
+      
+      if (window.__animTime >= totalDur) {
+        window.__animTime = 0;
+        document.getElementById('timeline').value = 0;
+        window.setCurrentShot(0, true);
+        clearBallTrail();
+        if (window.__clearTrail) window.__clearTrail();
+      }
+      
+      playOneStep();
+    }
   });
+
+  function playOneStep() {
+    const state = getState();
+    const shots = getShots();
+    const totalDur = getTotalRallyDuration(shots);
+    
+    if (window.__animTime >= totalDur) {
+      window.__animTime = 0;
+      document.getElementById('timeline').value = 0;
+      window.setCurrentShot(0, true);
+      clearBallTrail();
+      if (window.__clearTrail) window.__clearTrail();
+      return;
+    }
+
+    let accumulatedTime = 0;
+    let targetTime = window.__animTime;
+    
+    for (let i = 1; i < shots.length; i++) {
+      const dur = getShotDuration(shots[i]);
+      if (targetTime >= accumulatedTime && targetTime < accumulatedTime + dur) {
+        targetTime = accumulatedTime + dur;
+        break;
+      }
+      accumulatedTime += dur;
+    }
+    
+    if (targetTime === window.__animTime) {
+      targetTime = totalDur;
+    }
+
+    state.playing = true;
+    playBtn.textContent = '⏸ 暫停';
+    window.__stepTargetTime = targetTime;
+  }
 
   // 時間軸
   document.getElementById('timeline').addEventListener('input', (e) => {
     const state = getState();
     state.playing = false;
-    document.getElementById('btn-play').textContent = '播放';
+    playBtn.textContent = '▶ 播放';
     const percent = parseFloat(e.target.value);
     const shots = getShots();
     const totalDur = getTotalRallyDuration(shots);
@@ -355,7 +443,7 @@ function bindUIEvents() {
     btn.addEventListener('click', () => setCameraView(btn.dataset.view));
   });
 
-  // 拍次控制
+  // ===== 拍次控制 =====
   document.getElementById('btn-shot-prev').addEventListener('click', () => {
     if (getCurrentIndex() > 0) window.setCurrentShot(getCurrentIndex() - 1);
   });
@@ -390,46 +478,32 @@ function bindUIEvents() {
 
   document.getElementById('btn-save').addEventListener('click', () => {
     syncCurrentToLibrary();
+    updateLogButton();
     showToast('戰術腳本已更新保存！');
   });
 
-  // 撤銷/復原
-  document.getElementById('btn-undo').addEventListener('click', () => {
-    const prev = undo();
-    if (prev) {
-      const state = getState();
-      state.shots = prev;
-      const idx = Math.min(getCurrentIndex(), state.shots.length - 1);
-      window.setCurrentShot(idx);
-      updateParamPanel();
-      render2D();
-      sync3DPositions();
-    }
-  });
-
-  document.getElementById('btn-redo').addEventListener('click', () => {
-    const next = redo();
-    if (next) {
-      const state = getState();
-      state.shots = next;
-      const idx = Math.min(getCurrentIndex(), state.shots.length - 1);
-      window.setCurrentShot(idx);
-      updateParamPanel();
-      render2D();
-      sync3DPositions();
-    }
-  });
-
-  // 模式切換 (移除手動模式)
-  document.querySelectorAll('.app-mode-btn').forEach(btn => {
+  // ===== 模式切換（腳本 / 手繪） =====
+  document.querySelectorAll('.mode-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.app-mode-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const state = getState();
       state.appMode = btn.dataset.appmode;
 
       const freeTb = document.getElementById('free-draw-toolbar');
-      if (freeTb) freeTb.classList.toggle('active', state.appMode === 'free');
+      if (freeTb) {
+        freeTb.style.display = state.appMode === 'free' ? 'flex' : 'none';
+      }
+
+      // 手繪模式：隱藏參數區
+      const panelWrap = document.getElementById('panel-wrap');
+      if (panelWrap) {
+        if (state.appMode === 'free') {
+          panelWrap.classList.add('hidden-panel');
+        } else {
+          panelWrap.classList.remove('hidden-panel');
+        }
+      }
 
       render2D();
       updateHUD();
@@ -437,28 +511,51 @@ function bindUIEvents() {
     });
   });
 
-  // 場地模式
-  document.querySelectorAll('.mode-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+  // ===== 手繪工具 =====
+  document.querySelectorAll('#free-draw-toolbar .tool-btn[data-tool]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('#free-draw-toolbar .tool-btn[data-tool]').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
       const state = getState();
-      state.mode = btn.dataset.mode;
-
-      // 重建球員
-      const scene = getScene();
-      Object.values(getPlayerMeshes()).forEach(m => scene.remove(m));
-      buildPlayers();
-
-      // 重新初始化
-      state.shots = [];
-      initDemo(state.shots, state.mode, state.appMode);
-      window.setCurrentShot(0);
-      syncCurrentToLibrary();
+      state.freeDraw.tool = this.dataset.tool;
     });
   });
 
-  // 日誌
+  document.getElementById('btn-undo-draw').addEventListener('click', () => {
+    const state = getState();
+    if (state.freeDraw.paths.length > 0) {
+      state.freeDraw.redoPaths.push(state.freeDraw.paths.pop());
+      render2D();
+    }
+  });
+
+  document.getElementById('btn-clear-draw').addEventListener('click', () => {
+    const state = getState();
+    state.freeDraw.paths = [];
+    state.freeDraw.redoPaths = [];
+    render2D();
+  });
+
+  // 顏色選擇器（7色）
+  const colorListContainer = document.getElementById('color-picker-list');
+  if (colorListContainer) {
+    const colors = ['#ff5252', '#2196f3', '#ffd54f', '#4caf50', '#ff9800', '#ab47bc', '#ffffff'];
+    const state = getState();
+    colors.forEach(c => {
+      const dot = document.createElement('div');
+      dot.className = 'color-dot';
+      if (c === state.freeDraw.color) dot.classList.add('active');
+      dot.style.background = c;
+      dot.onclick = () => {
+        document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+        dot.classList.add('active');
+        state.freeDraw.color = c;
+      };
+      colorListContainer.appendChild(dot);
+    });
+  }
+
+  // ===== 日誌 =====
   document.getElementById('btn-log').addEventListener('click', () => {
     const logPanel = document.getElementById('log-panel');
     const scriptsPanel = document.getElementById('scripts-panel');
@@ -470,7 +567,11 @@ function bindUIEvents() {
     }
   });
 
-  // 腳本管理
+  document.getElementById('btn-log-close').addEventListener('click', () => {
+    document.getElementById('log-panel').style.display = 'none';
+  });
+
+  // ===== 腳本管理 =====
   document.getElementById('btn-scripts').addEventListener('click', () => {
     const scriptsPanel = document.getElementById('scripts-panel');
     const logPanel = document.getElementById('log-panel');
@@ -478,52 +579,57 @@ function bindUIEvents() {
       const isShow = scriptsPanel.style.display === 'none' || scriptsPanel.style.display === '';
       logPanel.style.display = 'none';
       scriptsPanel.style.display = isShow ? 'flex' : 'none';
-      if (isShow) updateScriptsList();
+      if (isShow) {
+        scriptsPanel.style.left = '50%';
+        scriptsPanel.style.top = '50%';
+        scriptsPanel.style.transform = 'translate(-50%, -50%)';
+        updateScriptsList();
+      }
     }
   });
 
-  // 新增腳本 (彈窗選擇類型)
+  // 新增腳本
   document.getElementById('btn-new-script').addEventListener('click', () => {
-    const typeOptions = [
-      { label: '單打', value: 'singles' },
-      { label: '雙打', value: 'doubles' },
-      { label: '1v2', value: '2v1' },
-      { label: '1v3', value: '3v1' }
-    ];
+    document.getElementById('script-type-modal').style.display = 'flex';
+  });
 
-    // 簡單彈窗選擇
-    const type = prompt('請選擇腳本類型：\n1. 單打\n2. 雙打\n3. 1v2\n4. 1v3', '1');
-    if (!type) return;
+  document.getElementById('btn-modal-close').addEventListener('click', () => {
+    document.getElementById('script-type-modal').style.display = 'none';
+  });
 
-    const typeMap = { '1': 'singles', '2': 'doubles', '3': '2v1', '4': '3v1' };
-    const typeLabels = { 'singles': '單打', 'doubles': '雙打', '2v1': '1v2', '3v1': '1v3' };
-    const selectedType = typeMap[type];
-    if (!selectedType) { showToast('無效的選擇'); return; }
+  document.getElementById('script-type-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+      document.getElementById('script-type-modal').style.display = 'none';
+    }
+  });
 
-    const name = prompt('請輸入腳本名稱：', `${typeLabels[selectedType]}001`);
-    if (name === null || name.trim() === '') { showToast('已取消'); return; }
+  document.querySelectorAll('.type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const type = btn.dataset.type;
+      const typeFormats = { singles: '[單打]', doubles: '[雙打]', '2v1': '[2-1式]', '3v1': '[3-1式]' };
+      
+      document.getElementById('script-type-modal').style.display = 'none';
+      
+      const defaultName = `${typeFormats[type]}001`;
+      const name = prompt('請輸入腳本名稱：', defaultName);
+      if (name === null || name.trim() === '') {
+        showToast('已取消');
+        return;
+      }
 
-    const state = getState();
-    state.mode = selectedType;
-    state.shots = [];
-    initDemo(state.shots, state.mode, state.appMode);
+      const state = getState();
+      state.mode = type;
+      state.shots = [];
+      initDemo(state.shots, state.mode, state.appMode);
 
-    const newId = addScript(selectedType, name.trim());
-    syncCurrentToLibrary();
-    updateScriptsList();
+      const newId = addScript(type, name.trim());
+      syncCurrentToLibrary();
+      updateScriptsList();
+      updateLogButton();
 
-    // 更新模式按鈕
-    document.querySelectorAll('.mode-btn').forEach(b =>
-      b.classList.toggle('active', b.dataset.mode === selectedType)
-    );
-
-    // 重建球員
-    const scene = getScene();
-    Object.values(getPlayerMeshes()).forEach(m => scene.remove(m));
-    buildPlayers();
-
-    window.setCurrentShot(0);
-    showToast(`已新增腳本：${name.trim()}`);
+      window.setCurrentShot(0);
+      showToast(`已新增腳本：${name.trim()}`);
+    });
   });
 
   // 導入/導出
@@ -539,78 +645,15 @@ function bindUIEvents() {
     const reader = new FileReader();
     reader.onload = (evt) => {
       importScripts(evt.target.result);
+      updateLogButton();
     };
     reader.readAsText(file);
     e.target.value = '';
   });
 
-  // 自由繪圖工具
-  document.getElementById('btn-draw-tool').addEventListener('click', function() {
-    document.querySelectorAll('#free-draw-toolbar .btn').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    const state = getState();
-    state.freeDraw.tool = 'pencil';
-  });
-
-  document.getElementById('btn-select-tool').addEventListener('click', function() {
-    document.querySelectorAll('#free-draw-toolbar .btn').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    const state = getState();
-    state.freeDraw.tool = 'select';
-  });
-
-  document.getElementById('btn-eraser-tool').addEventListener('click', function() {
-    document.querySelectorAll('#free-draw-toolbar .btn').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    const state = getState();
-    state.freeDraw.tool = 'eraser';
-  });
-
-  document.getElementById('btn-clear-draw').addEventListener('click', () => {
-    const state = getState();
-    state.freeDraw.paths = [];
-    state.freeDraw.redoPaths = [];
-    render2D();
-  });
-
-  document.getElementById('btn-undo-draw').addEventListener('click', () => {
-    const state = getState();
-    if (state.freeDraw.paths.length > 0) {
-      state.freeDraw.redoPaths.push(state.freeDraw.paths.pop());
-      render2D();
-    }
-  });
-
-  // 顏色選擇器
-  const colorListContainer = document.getElementById('color-picker-list');
-  if (colorListContainer) {
-    const colors = ['#ff5252', '#2196f3', '#ffd54f', '#4caf50', '#ff9800', '#ab47bc', '#ffffff', '#00bcd4'];
-    const state = getState();
-    colors.forEach(c => {
-      const dot = document.createElement('div');
-      dot.className = `color-picker-dot ${c === state.freeDraw.color ? 'active' : ''}`;
-      dot.style.background = c;
-      dot.onclick = () => {
-        document.querySelectorAll('.color-picker-dot').forEach(d => d.classList.remove('active'));
-        dot.classList.add('active');
-        state.freeDraw.color = c;
-      };
-      colorListContainer.appendChild(dot);
-    });
-  }
-
-  // 窗口 Resize
   window.addEventListener('resize', () => {
     resizeCanvas();
   });
-
-  // 自動展開 2D 抽屜
-  setTimeout(() => {
-    document.getElementById('drawer2d').classList.add('open');
-    setTimeout(resizeCanvas, 100);
-  }, 300);
 }
-
-// ========== 啟動 ==========
 
 document.addEventListener('DOMContentLoaded', init);
