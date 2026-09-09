@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>羽球戰術板 v0.1</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="topbar">
+  <div class="title">羽球戰術板 v0.1</div>
+  <button class="btn" id="btn-drawer">2D 戰術板</button>
+  <button class="btn active" id="btn-toggle-tb">3D 工具欄</button>
+  <div class="sep"></div>
+  <button class="btn" id="btn-log">📋 日誌</button>
+  <button class="btn" id="btn-scripts">📁 腳本管理</button>
+</div>
+
+<div id="hud">單打回合 · 智能模式 · 共 0 拍</div>
+<div id="container3d"></div>
+
+<div id="integrated-toolbar">
+  <div class="tb-row">
+    <button class="btn" id="btn-play" style="flex:1">▶ 播放</button>
+    <button class="btn" id="btn-stop" style="flex:1">⏹ 停止</button>
+    <button class="btn" id="btn-step" style="flex:1">⏭ 單拍</button>
+  </div>
+  <div class="tb-row">
+    <span class="row-label">進度</span>
+    <input type="range" id="timeline" min="0" max="100" value="0" step="0.1">
+  </div>
+  <div class="tb-row">
+    <span class="row-label">速度</span>
+    <div class="tb-btn-group">
+      <button class="btn speed-btn" data-speed="0.2">0.2x</button>
+      <button class="btn speed-btn" data-speed="0.5">0.5x</button>
+      <button class="btn speed-btn active" data-speed="1">1x</button>
+      <button class="btn speed-btn" data-speed="1.5">1.5x</button>
+      <button class="btn speed-btn" data-speed="2">2x</button>
+    </div>
+  </div>
+<div class="tb-row">
+  <span class="row-label">視角</span>
+  <div class="tb-btn-group">
+    <button class="btn view-btn" data-view="top">俯瞰</button>
+    <button class="btn view-btn" data-view="high">高位</button>
+    <button class="btn view-btn" data-view="back">底線</button>
+    <button class="btn view-btn" data-view="side">側視</button>
+    <button class="btn view-btn active" data-view="45">45°</button>
+  </div>
+</div>
+</div>
+
+<div id="drawer2d">
+  <div id="drawer-header">
+    <div class="app-mode-group">
+      <button class="app-mode-btn active" data-appmode="smart">🧠 智能模式</button>
+      <button class="app-mode-btn" data-appmode="free">✏️ 自由模式</button>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="mode-group" id="court-mode-group">
+      <button class="mode-btn active" data-mode="singles">單打</button>
+      <button class="mode-btn" data-mode="doubles">雙打</button>
+      <button class="mode-btn" data-mode="2v1">2打1</button>
+      <button class="mode-btn" data-mode="3v1">3打1</button>
+    </div>
+    
+    <div class="right-tools">
+      <div id="free-draw-toolbar">
+        <button class="btn active" id="btn-draw-tool" data-tool="pencil">✏️ 畫筆</button>
+        <button class="btn" id="btn-select-tool" data-tool="select">✋ 選取</button>
+        <div class="sep"></div>
+        <div id="color-picker-list" style="display:flex;gap:4px;align-items:center;"></div>
+        <div class="sep"></div>
+        <button class="btn" id="btn-eraser-tool" data-tool="eraser">🧹 橡皮擦</button>
+        <button class="btn warn" id="btn-clear-draw">清空畫布</button>
+        <button class="btn" id="btn-undo-draw">↩ 撤銷畫筆</button>
+      </div>
+
+      <div id="shot-controls-header">
+        <button class="btn" id="btn-shot-prev">◀</button>
+        <span id="shot-info-text">0 / 0</span>
+        <button class="btn" id="btn-shot-next">▶</button>
+        <button class="btn ok" id="btn-add">+ 新增</button>
+        <button class="btn warn" id="btn-del">🗑 刪除</button>
+        <button class="btn" id="btn-undo">↩ 撤銷</button>
+        <button class="btn" id="btn-redo">↪ 復原</button>
+        <button class="btn save" id="btn-save">💾 保存</button>
+      </div>
+      <button class="btn" id="btn-close-drawer">✕ 收起</button>
+    </div>
+  </div>
+  
+  <div id="drawer-body">
+    <div id="court-wrap">
+      <canvas id="court2d"></canvas>
+      <div id="mini-selector-popup">
+        <div id="mini-popup-title">選擇重疊物件</div>
+        <div id="mini-popup-options"></div>
+      </div>
+    </div>
+    <div id="resizer-v"></div>
+    <div id="panel-wrap">
+      <div class="panel-section" id="param-section">
+        <div id="param-content"><div style="font-size:12px;color:#666">載入中...</div></div>
+      </div>
+      <div class="panel-section" id="side-arc-section">
+        <h4>側視角軌跡預覽 ( Side Profile )</h4>
+        <canvas id="sideArcCanvas" style="width:100%; height:110px; background:#071422; border-radius:4px; border:1px solid #1e3a5f; display:block; margin-top:4px;"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast">戰術腳本已更新保存！</div>
+
+<!-- 日誌面板 - 置中 -->
+<div id="log-panel" class="popup-panel" style="display:none;">
+  <div class="popup-header" id="log-header">
+    <span id="log-title">📋 回合日誌</span>
+    <button class="btn" id="btn-log-close" style="padding:2px 8px;font-size:12px;background:transparent;">✕</button>
+  </div>
+  <div id="log-list" class="popup-list"></div>
+</div>
+
+<div id="scripts-panel" class="popup-panel" style="right: 16px; width: 320px; display:none;">
+  <div class="popup-header" style="display:flex;justify-content:space-between;align-items:center;">
+    <span>📁 腳本管理器</span>
+    <button class="btn ok" id="btn-new-script" style="padding:2px 8px;font-size:12px">+ 新增</button>
+  </div>
+  <div class="script-tools">
+    <button class="btn" id="btn-import-all" style="flex:1">📥 導入(JSON)</button>
+    <button class="btn" id="btn-export-all" style="flex:1">📤 導出全部</button>
+    <input type="file" id="file-import" accept=".json" style="display:none;">
+  </div>
+  <div id="scripts-list" class="popup-list"></div>
+</div>
+
+<!-- 3D 渲染庫 -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.147.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

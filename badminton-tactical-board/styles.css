@@ -1,0 +1,918 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Microsoft JhengHei", "PingFang SC", sans-serif;
+  color: #e6e6e6;
+}
+
+body {
+  background: #0a1929;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ========== 頂部工具列 ========== */
+#topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: #0f2847;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 10px;
+  z-index: 100;
+  border-bottom: 1px solid #1e3a5f;
+}
+
+#topbar .title {
+  font-weight: bold;
+  font-size: 15px;
+  color: #ffd54f;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+
+/* ========== 通用按鈕 ========== */
+.btn {
+  background: #1e3a5f;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: #2a4a73;
+}
+
+.btn:active {
+  transform: scale(0.96);
+}
+
+.btn.active {
+  background: #f57c00;
+  color: #fff;
+}
+
+.btn.warn {
+  background: #e64a19;
+  color: #fff;
+}
+
+.btn.warn:hover {
+  background: #c62828;
+}
+
+.btn.ok {
+  background: #2e7d32;
+  color: #fff;
+}
+
+.btn.ok:hover {
+  background: #1b5e20;
+}
+
+.btn.save {
+  background: #1565c0;
+  color: #fff;
+}
+
+.btn.save:hover {
+  background: #0d47a1;
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.sep {
+  width: 1px;
+  height: 24px;
+  background: #2a4a73;
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+/* ========== HUD 狀態列 ========== */
+#hud {
+  position: fixed;
+  top: 10px;
+  right: 16px;
+  background: rgba(15, 40, 71, 0.85);
+  padding: 4px 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 101;
+  backdrop-filter: blur(4px);
+  border: 1px solid #1e3a5f;
+  color: #ffd54f;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ========== 3D 容器 ========== */
+#container3d {
+  position: fixed;
+  top: 48px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+}
+
+#container3d canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* ========== 3D 右下角工具欄 ========== */
+#integrated-toolbar {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  width: 380px;
+  background: rgba(15, 40, 71, 0.92);
+  border: 1px solid #1e3a5f;
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 95;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+#integrated-toolbar.hidden {
+  display: none !important;
+}
+
+.tb-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.tb-row .row-label {
+  font-size: 11px;
+  color: #90caf9;
+  min-width: 44px;
+  flex-shrink: 0;
+}
+
+.tb-row .btn {
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.tb-row input[type="range"] {
+  flex: 1;
+  cursor: pointer;
+  accent-color: #f57c00;
+  background: transparent;
+  height: 4px;
+}
+
+.tb-btn-group {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+}
+
+.tb-btn-group .btn {
+  flex: 1;
+  text-align: center;
+  padding: 4px 0;
+  font-size: 11px;
+}
+
+/* ========== 2D 抽屜 ========== */
+#drawer2d {
+  position: fixed;
+  top: 48px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #0a1929;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+}
+
+#drawer2d.open {
+  transform: translateY(0);
+}
+
+/* ========== 2D 標題列 ========== */
+#drawer-header {
+  min-height: 46px;
+  height: auto;
+  background: #0f2847;
+  display: flex;
+  align-items: center;
+  padding: 6px 14px;
+  gap: 10px;
+  border-bottom: 1px solid #1e3a5f;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+#drawer-header .mode-group {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+#drawer-header .mode-btn {
+  background: #1e3a5f;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#drawer-header .mode-btn:hover {
+  background: #2a4a73;
+}
+
+#drawer-header .mode-btn.active {
+  background: #f57c00;
+  color: #fff;
+}
+
+#drawer-header .right-tools {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ========== 模式切換按鈕組 ========== */
+.app-mode-group {
+  display: flex;
+  background: #071422;
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid #1e3a5f;
+  flex-shrink: 0;
+}
+
+.app-mode-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  border: none;
+  background: transparent;
+  color: #90caf9;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.app-mode-btn:hover {
+  color: #fff;
+}
+
+.app-mode-btn.active {
+  background: #f57c00;
+  color: #fff;
+}
+
+/* ========== 拍數控制欄 ========== */
+#shot-controls-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #162b45;
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid #1e3a5f;
+  flex-wrap: wrap;
+}
+
+#shot-controls-header .btn {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+#shot-info-text {
+  font-size: 12px;
+  font-weight: bold;
+  color: #ffd54f;
+  min-width: 55px;
+  text-align: center;
+  user-select: none;
+}
+
+/* ========== 自由模式塗鴉工具欄 ========== */
+#free-draw-toolbar {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background: #162b45;
+  padding: 3px 10px;
+  border-radius: 5px;
+  border: 1px solid #1e3a5f;
+  flex-wrap: wrap;
+}
+
+#free-draw-toolbar.active {
+  display: flex;
+}
+
+.color-picker-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.color-picker-dot:hover {
+  transform: scale(1.1);
+}
+
+.color-picker-dot.active {
+  border-color: #fff;
+  transform: scale(1.2);
+}
+
+/* ========== 2D 主體 ========== */
+#drawer-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  min-height: 0;
+}
+
+/* ========== 2D 場地區域 ========== */
+#court-wrap {
+  flex: 1;
+  position: relative;
+  background: #071422;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  overflow: hidden;
+  min-width: 250px;
+}
+
+#court2d {
+  background: #0a1929;
+  cursor: grab;
+  display: block;
+  touch-action: none;
+  border-radius: 2px;
+}
+
+#court2d:active {
+  cursor: grabbing;
+}
+
+/* ========== 迷你選擇器小窗 ========== */
+#mini-selector-popup {
+  display: none;
+  position: absolute;
+  z-index: 150;
+  background: rgba(15, 40, 71, 0.95);
+  border: 1px solid #ffd54f;
+  border-radius: 6px;
+  padding: 8px 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  min-width: 160px;
+  font-size: 12px;
+}
+
+#mini-popup-title {
+  color: #ffd54f;
+  font-weight: bold;
+  font-size: 11px;
+  border-bottom: 1px solid #1e3a5f;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+}
+
+#mini-popup-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ========== 可調節分割條 ========== */
+#resizer-v {
+  width: 8px;
+  background: #1e3a5f;
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.2s;
+  z-index: 85;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#resizer-v:hover,
+#resizer-v.dragging {
+  background: #f57c00;
+}
+
+#resizer-v::after {
+  content: '⋮';
+  font-size: 14px;
+  color: #90caf9;
+  letter-spacing: -2px;
+  font-weight: bold;
+}
+
+/* ========== 右側控制面板 ========== */
+#panel-wrap {
+  width: 380px;
+  background: #0f2847;
+  border-left: 1px solid #1e3a5f;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex-shrink: 0;
+  min-width: 300px;
+  transition: width 0.2s ease;
+}
+
+#panel-wrap.hidden-panel {
+  display: none !important;
+}
+
+.panel-section {
+  background: #162b45;
+  border-radius: 6px;
+  padding: 8px 10px;
+  flex-shrink: 0;
+}
+
+.panel-section h4 {
+  font-size: 12px;
+  margin-bottom: 6px;
+  color: #ffd54f;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ========== 參數行 ========== */
+.param-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+  font-size: 11px;
+}
+
+.param-row label {
+  width: 72px;
+  color: #90caf9;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.param-btns {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.param-btns button {
+  flex: 1;
+  background: #1e3a5f;
+  border: none;
+  padding: 4px 0;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  min-width: 36px;
+  color: #d0d0d0;
+  transition: all 0.15s;
+}
+
+.param-btns button:hover:not(:disabled) {
+  background: #2a4a73;
+}
+
+.param-btns button.active {
+  background: #f57c00;
+  color: #fff;
+  font-weight: bold;
+}
+
+.param-btns button:disabled,
+.slider-container input[type="range"]:disabled,
+.slider-container .step-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ========== 滑桿容器 ========== */
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.slider-container input[type="range"] {
+  flex: 1;
+  accent-color: #f57c00;
+  cursor: pointer;
+  background: transparent;
+  height: 4px;
+}
+
+.slider-container .step-btn {
+  background: #1e3a5f;
+  border: 1px solid #2a4a73;
+  color: #ffd54f;
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 12px;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.slider-container .step-btn:hover:not(:disabled) {
+  background: #f57c00;
+  color: #fff;
+}
+
+.slider-val {
+  font-size: 11px;
+  color: #ffd54f;
+  min-width: 42px;
+  text-align: right;
+  font-weight: bold;
+}
+
+/* ========== 物理診斷與攔截警告框 ========== */
+.physics-diag {
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+  margin-bottom: 6px;
+  border: 1px solid transparent;
+}
+
+.physics-diag.ok {
+  background: rgba(46, 125, 50, 0.2);
+  border-color: #2e7d32;
+  color: #81c784;
+}
+
+.physics-diag.warn {
+  background: rgba(230, 74, 25, 0.2);
+  border-color: #e64a19;
+  color: #ff8a65;
+}
+
+.physics-diag.intercept {
+  background: rgba(255, 152, 0, 0.2);
+  border-color: #ff9800;
+  color: #ffe082;
+}
+
+/* ========== Toast 提示條 ========== */
+#toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(46, 125, 50, 0.95);
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 24px;
+  font-size: 13px;
+  z-index: 200;
+  display: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ========== 通用下拉面板 ========== */
+.popup-panel {
+  position: fixed;
+  top: 56px;
+  width: 320px;
+  max-height: calc(100vh - 80px);
+  background: rgba(15, 40, 71, 0.96);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 95;
+  display: none;
+  border: 1px solid #1e3a5f;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  flex-direction: column;
+  backdrop-filter: blur(8px);
+}
+
+.popup-panel.open {
+  display: flex !important;
+}
+
+.popup-header {
+  padding: 10px 14px;
+  background: #1e3a5f;
+  font-size: 13px;
+  font-weight: bold;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.popup-list {
+  overflow-y: auto;
+  padding: 8px;
+  flex: 1;
+}
+
+.popup-item {
+  padding: 8px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid #1e3a5f;
+  cursor: pointer;
+  border-radius: 3px;
+  margin-bottom: 4px;
+  transition: background 0.15s;
+}
+
+.popup-item:hover {
+  background: #1e3a5f;
+}
+
+.popup-item.current {
+  background: #f57c00;
+  color: #fff;
+}
+
+/* ========== 腳本管理 ========== */
+.script-item-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #1e3a5f;
+  margin-bottom: 4px;
+  background: #0d203a;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.script-item-wrap .popup-item {
+  flex: 1;
+  border-bottom: none;
+  margin-bottom: 0;
+  border-radius: 3px 0 0 3px;
+}
+
+.script-action-btns {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.btn-edit-script,
+.btn-del-script {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px 10px;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.btn-edit-script {
+  color: #64b5f6;
+}
+
+.btn-edit-script:hover {
+  background: rgba(100, 181, 246, 0.2);
+}
+
+.btn-del-script {
+  color: #e64a19;
+  font-weight: bold;
+}
+
+.btn-del-script:hover {
+  background: rgba(230, 74, 25, 0.2);
+}
+
+.script-tools {
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px;
+  background: #162b45;
+  border-bottom: 1px solid #1e3a5f;
+  flex-shrink: 0;
+}
+
+/* ========== 日誌面板 (置中) ========== */
+#log-panel {
+  left: 50%;
+  transform: translateX(-50%);
+  width: 420px;
+  max-width: calc(100vw - 40px);
+}
+
+#log-panel .popup-header {
+  cursor: default;
+}
+
+#log-title {
+  font-size: 13px;
+  color: #ffd54f;
+}
+
+#btn-log-close {
+  background: transparent;
+  border: none;
+  color: #90caf9;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.2s;
+}
+
+#btn-log-close:hover {
+  color: #ff5252;
+}
+
+/* ========== 自訂捲軸樣式 ========== */
+#panel-wrap::-webkit-scrollbar,
+.popup-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+#panel-wrap::-webkit-scrollbar-track,
+.popup-list::-webkit-scrollbar-track {
+  background: #0a1929;
+  border-radius: 3px;
+}
+
+#panel-wrap::-webkit-scrollbar-thumb,
+.popup-list::-webkit-scrollbar-thumb {
+  background: #1e3a5f;
+  border-radius: 3px;
+}
+
+#panel-wrap::-webkit-scrollbar-thumb:hover,
+.popup-list::-webkit-scrollbar-thumb:hover {
+  background: #f57c00;
+}
+
+/* ========== 響應式調整 ========== */
+@media (max-width: 1024px) {
+  #integrated-toolbar {
+    width: 320px;
+    padding: 8px 10px;
+  }
+  
+  #panel-wrap {
+    width: 300px;
+    min-width: 240px;
+  }
+  
+  #log-panel {
+    width: 360px;
+  }
+}
+
+@media (max-width: 768px) {
+  #topbar .title {
+    font-size: 13px;
+    margin-right: 4px;
+  }
+  
+  #topbar .btn {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+  
+  #integrated-toolbar {
+    width: 280px;
+    padding: 6px 8px;
+    bottom: 8px;
+    right: 8px;
+  }
+  
+  #integrated-toolbar .tb-row .btn {
+    font-size: 10px;
+    padding: 3px 4px;
+  }
+  
+  #panel-wrap {
+    width: 260px;
+    min-width: 200px;
+    padding: 6px 8px;
+  }
+  
+  #drawer-header {
+    padding: 4px 8px;
+    gap: 6px;
+  }
+  
+  #drawer-header .right-tools {
+    gap: 4px;
+  }
+  
+  #shot-controls-header {
+    padding: 2px 4px;
+  }
+  
+  #shot-controls-header .btn {
+    font-size: 10px;
+    padding: 3px 5px;
+  }
+  
+  #shot-info-text {
+    font-size: 10px;
+    min-width: 40px;
+  }
+  
+  #log-panel {
+    width: 300px;
+  }
+  
+  #hud {
+    font-size: 10px;
+    padding: 2px 10px;
+    top: 52px;
+    right: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  #topbar {
+    padding: 0 6px;
+    gap: 4px;
+  }
+  
+  #topbar .title {
+    font-size: 11px;
+  }
+  
+  #topbar .btn {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+  
+  #integrated-toolbar {
+    width: 240px;
+  }
+  
+  #panel-wrap {
+    width: 200px;
+    min-width: 160px;
+  }
+  
+  .param-row label {
+    width: 56px;
+    font-size: 10px;
+  }
+  
+  .slider-val {
+    min-width: 30px;
+    font-size: 10px;
+  }
+}
