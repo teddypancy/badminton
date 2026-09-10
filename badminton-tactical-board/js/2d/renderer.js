@@ -175,107 +175,6 @@ function drawPlayers(shot) {
   });
 }
 
-// ========== 繪製球場 ==========
-
-function drawCourt() {
-  const halfW = COURT.width_d / 2;
-  const halfL = COURT.length / 2;
-  const halfWS = COURT.width_s / 2;
-
-  // ---- 場地外框（雙打邊線） ----
-  const c1 = m2px(-halfW, -halfL);
-  const c2 = m2px(halfW, halfL);
-
-  // 場地底色
-  ctx.fillStyle = '#1b5e20';
-  ctx.fillRect(c1.x, c1.y, c2.x - c1.x, c2.y - c1.y);
-
-  // ---- 雙打外框（最外圍） ----
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(c1.x, c1.y, c2.x - c1.x, c2.y - c1.y);
-
-  // ---- 單打邊線（內側） ----
-  ctx.lineWidth = 1.5;
-  const sLeft = m2px(-halfWS, -halfL);
-  const sRight = m2px(halfWS, halfL);
-  ctx.beginPath();
-  ctx.moveTo(sLeft.x, sLeft.y);
-  ctx.lineTo(sLeft.x, sRight.y);
-  ctx.moveTo(sRight.x, sLeft.y);
-  ctx.lineTo(sRight.x, sRight.y);
-  ctx.stroke();
-
-  // ---- 單打前發球線（服務線） ----
-  const sfTop = m2px(0, -COURT.service_line);
-  const sfBottom = m2px(0, COURT.service_line);
-  ctx.beginPath();
-  ctx.moveTo(sfTop.x, c1.y);
-  ctx.lineTo(sfTop.x, c2.y);
-  ctx.moveTo(sfBottom.x, c1.y);
-  ctx.lineTo(sfBottom.x, c2.y);
-  ctx.stroke();
-
-  // ---- 雙打後發球線（雙打底線） ----
-  const dbTop = m2px(0, -COURT.double_back);
-  const dbBottom = m2px(0, COURT.double_back);
-  ctx.beginPath();
-  ctx.moveTo(dbTop.x, c1.y);
-  ctx.lineTo(dbTop.x, c2.y);
-  ctx.moveTo(dbBottom.x, c1.y);
-  ctx.lineTo(dbBottom.x, c2.y);
-  ctx.stroke();
-
-  // ---- 中線（左右半場分割） ----
-  const midY = m2px(0, 0).y;
-  ctx.beginPath();
-  ctx.moveTo(c1.x, midY);
-  ctx.lineTo(sfTop.x, midY);
-  ctx.moveTo(sfBottom.x, midY);
-  ctx.lineTo(c2.x, midY);
-  ctx.stroke();
-
-  // ---- 球網 ----
-  const netX = m2px(0, 0).x;
-  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(netX, c1.y);
-  ctx.lineTo(netX, c2.y);
-  ctx.stroke();
-
-  // ---- 網柱標記 ----
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.arc(netX, c1.y, 4, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(netX, c2.y, 4, 0, Math.PI * 2);
-  ctx.fill();
-
-  // ---- 雙打後發球線與底線之間的區域標記（可選） ----
-  // 在雙打底線位置畫短標記線
-  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([3, 3]);
-  // 雙打後發球線標記（在邊線上的小標記）
-  const dbMarkLeft = m2px(-halfW, -COURT.double_back);
-  const dbMarkRight = m2px(halfW, -COURT.double_back);
-  ctx.beginPath();
-  ctx.moveTo(dbMarkLeft.x - 6, dbMarkLeft.y);
-  ctx.lineTo(dbMarkLeft.x + 6, dbMarkLeft.y);
-  ctx.moveTo(dbMarkRight.x - 6, dbMarkRight.y);
-  ctx.lineTo(dbMarkRight.x + 6, dbMarkRight.y);
-  const dbMarkLeftB = m2px(-halfW, COURT.double_back);
-  const dbMarkRightB = m2px(halfW, COURT.double_back);
-  ctx.moveTo(dbMarkLeftB.x - 6, dbMarkLeftB.y);
-  ctx.lineTo(dbMarkLeftB.x + 6, dbMarkLeftB.y);
-  ctx.moveTo(dbMarkRightB.x - 6, dbMarkRightB.y);
-  ctx.lineTo(dbMarkRightB.x + 6, dbMarkRightB.y);
-  ctx.stroke();
-  ctx.setLineDash([]);
-}
-
 // ========== 主渲染函數 ==========
 
 export function render2D() {
@@ -288,7 +187,69 @@ export function render2D() {
   ctx.clearRect(0, 0, w, h);
 
   // --- 繪製球場 ---
-  drawCourt();
+  const c1 = m2px(-COURT.width_d / 2, -COURT.length / 2);
+  const c2 = m2px(COURT.width_d / 2, COURT.length / 2);
+
+  ctx.fillStyle = '#1b5e20';
+  ctx.fillRect(c1.x, c1.y, c2.x - c1.x, c2.y - c1.y);
+
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(c1.x, c1.y, c2.x - c1.x, c2.y - c1.y);
+
+  ctx.lineWidth = 1.5;
+  const sTop = m2px(-COURT.width_s / 2, -COURT.length / 2);
+  const sBottom = m2px(COURT.width_s / 2, COURT.length / 2);
+  ctx.beginPath();
+  ctx.moveTo(c1.x, sTop.y);
+  ctx.lineTo(c2.x, sTop.y);
+  ctx.moveTo(c1.x, sBottom.y);
+  ctx.lineTo(c2.x, sBottom.y);
+  ctx.stroke();
+
+  const netX = m2px(0, 0).x;
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(netX, c1.y);
+  ctx.lineTo(netX, c2.y);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  const sfLeft = m2px(0, -COURT.service_line).x;
+  const sfRight = m2px(0, COURT.service_line).x;
+  ctx.beginPath();
+  ctx.moveTo(sfLeft, c1.y);
+  ctx.lineTo(sfLeft, c2.y);
+  ctx.moveTo(sfRight, c1.y);
+  ctx.lineTo(sfRight, c2.y);
+  ctx.stroke();
+
+  const dbLeft = m2px(0, -COURT.double_back).x;
+  const dbRight = m2px(0, COURT.double_back).x;
+  ctx.beginPath();
+  ctx.moveTo(dbLeft, c1.y);
+  ctx.lineTo(dbLeft, c2.y);
+  ctx.moveTo(dbRight, c1.y);
+  ctx.lineTo(dbRight, c2.y);
+  ctx.stroke();
+
+  const midY = m2px(0, 0).y;
+  ctx.beginPath();
+  ctx.moveTo(c1.x, midY);
+  ctx.lineTo(sfLeft, midY);
+  ctx.moveTo(sfRight, midY);
+  ctx.lineTo(c2.x, midY);
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(netX, c1.y, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(netX, c2.y, 4, 0, Math.PI * 2);
+  ctx.fill();
 
   // --- 自由繪圖 ---
   const freeDraw = getFreeDraw();
@@ -297,6 +258,7 @@ export function render2D() {
 
   // ---- 手繪模式 ----
   if (state.appMode === 'free') {
+    // 只繪製球員（保留球員物件）
     drawPlayers(shot);
     return;
   }

@@ -17,15 +17,15 @@ export function setCameraView(viewType) {
 
   switch (viewType) {
     case 'top':
-      camera.position.set(0, 18, 0.01);
+      camera.position.set(0, 20, 0.01);
       controls.target.set(0, 0, 0);
       break;
     case 'side':
-      camera.position.set(16, 3, 0);
+      camera.position.set(10, 3, 0);
       controls.target.set(0, 1, 0);
       break;
     case '45':
-      camera.position.set(9.5, 10.5, 11.5);
+      camera.position.set(9, 9, 8);
       controls.target.set(0, 0, 0);
       break;
     case 'high':
@@ -33,7 +33,7 @@ export function setCameraView(viewType) {
       controls.target.set(0, 0, 0);
       break;
     case 'low':
-      camera.position.set(0, 1.8, 8);
+      camera.position.set(0, 2.0, 11);
       controls.target.set(0, 1.2, 0);
       break;
     default:

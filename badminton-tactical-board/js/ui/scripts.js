@@ -13,8 +13,8 @@ import { getShotDuration, getTotalRallyDuration } from '../core/physics.js';
 //     mode: string,
 //     appMode: string,
 //     shots: array,
-//     diagnostics: array,  // 診斷紀錄
-//     modifiedAt: string   // 修改日期
+//     diagnostics: array,
+//     modifiedAt: string
 //   }
 // }
 
@@ -97,7 +97,6 @@ export function loadScriptFromLibrary(id) {
   state.history = [];
   state.redoHistory = [];
 
-  // 觸發重新渲染
   if (window.setCurrentShot) window.setCurrentShot(0);
   if (window.updateHUD) window.updateHUD();
   if (window.updateParamPanel) window.updateParamPanel();
@@ -150,7 +149,6 @@ export function editScriptName(id, newName) {
   if (newName && newName.trim() !== '') {
     script.name = newName.trim();
     updateScriptsList();
-    // 更新日誌按鈕
     if (window.updateLogButton) window.updateLogButton();
     return true;
   }
@@ -173,14 +171,14 @@ export function updateScriptsList() {
     const typeLabel = getScriptTypeLabel(s.type || s.data?.mode || 'singles');
     
     return `
-    <div class="script-item-wrap" style="${isCurrent ? 'border-left:3px solid #f57c00;' : ''}">
-      <div class="script-info ${isCurrent ? 'current' : ''}" onclick="window.loadScriptFromLibrary('${s.id}')">
+    <div class="script-item ${isCurrent ? 'current' : ''}" onclick="window.loadScriptFromLibrary('${s.id}')">
+      <div class="info">
         <span class="name">${s.name}</span>
         <span class="meta">${typeLabel} · ${totalShots}拍 · ${modifiedDate}</span>
       </div>
-      <div class="script-action-btns">
-        <button class="btn-edit-script" onclick="window.promptEditScript('${s.id}')" title="修改名稱">✎</button>
-        <button class="btn-del-script" onclick="window.deleteScript('${s.id}')" title="刪除">✕</button>
+      <div class="actions">
+        <button class="btn-edit" onclick="event.stopPropagation();window.promptEditScript('${s.id}')">✎ 更名</button>
+        <button class="btn-del" onclick="event.stopPropagation();window.deleteScript('${s.id}')">✕ 刪除</button>
       </div>
     </div>
   `}).join('');
@@ -204,7 +202,6 @@ export function importScripts(jsonData) {
   try {
     const imported = JSON.parse(jsonData);
     if (Array.isArray(imported) && imported.length > 0) {
-      // 驗證資料格式
       const valid = imported.every(s => s.id && s.name && s.type && s.data);
       if (!valid) {
         alert('JSON 格式不符：缺少必要欄位 (id, name, type, data)');

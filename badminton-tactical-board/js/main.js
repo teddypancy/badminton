@@ -279,7 +279,7 @@ function init() {
     renderer.render(scene, camera);
   }
 
-  console.log('🏸 羽球戰術板 v0.1 已初始化');
+  console.log('🏸 羽球戰術板 v0.2 已初始化');
 }
 
 // ========== UI 事件綁定 ==========
@@ -303,7 +303,7 @@ function bindUIEvents() {
     drawerBtn.classList.remove('active');
   });
 
-  // 3D控制台 - 默認收起
+  // 3D控制台
   document.getElementById('btn-toggle-tb').addEventListener('click', () => {
     const tb = document.getElementById('integrated-toolbar');
     tb.classList.toggle('hidden');
@@ -495,7 +495,6 @@ function bindUIEvents() {
         freeTb.style.display = state.appMode === 'free' ? 'flex' : 'none';
       }
 
-      // 手繪模式：隱藏參數區
       const panelWrap = document.getElementById('panel-wrap');
       if (panelWrap) {
         if (state.appMode === 'free') {
@@ -555,41 +554,78 @@ function bindUIEvents() {
     });
   }
 
-  // ===== 日誌 =====
-  document.getElementById('btn-log').addEventListener('click', () => {
-    const logPanel = document.getElementById('log-panel');
+  // ===== 日誌（右上角下拉） =====
+  const logBtn = document.getElementById('btn-log');
+  const logPanel = document.getElementById('log-panel');
+
+  logBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
     const scriptsPanel = document.getElementById('scripts-panel');
+    
     if (logPanel) {
       const isShow = logPanel.style.display === 'none' || logPanel.style.display === '';
       scriptsPanel.style.display = 'none';
       logPanel.style.display = isShow ? 'flex' : 'none';
-      if (isShow) updateLog();
+      if (isShow) {
+        updateLog();
+        const rect = this.getBoundingClientRect();
+        logPanel.style.top = (rect.bottom + 4) + 'px';
+        logPanel.style.right = (window.innerWidth - rect.right) + 'px';
+        logPanel.style.left = 'auto';
+      }
     }
   });
 
-  document.getElementById('btn-log-close').addEventListener('click', () => {
-    document.getElementById('log-panel').style.display = 'none';
+  document.getElementById('btn-log-close').addEventListener('click', function(e) {
+    e.stopPropagation();
+    logPanel.style.display = 'none';
   });
 
-  // ===== 腳本管理 =====
-  document.getElementById('btn-scripts').addEventListener('click', () => {
-    const scriptsPanel = document.getElementById('scripts-panel');
+  document.addEventListener('click', function(e) {
+    const panel = document.getElementById('log-panel');
+    const btn = document.getElementById('btn-log');
+    if (panel && panel.style.display === 'flex') {
+      if (!panel.contains(e.target) && !btn.contains(e.target)) {
+        panel.style.display = 'none';
+      }
+    }
+  });
+
+  // ===== 腳本管理（右上角下拉） =====
+  const scriptsBtn = document.getElementById('btn-scripts');
+  const scriptsPanel = document.getElementById('scripts-panel');
+
+  scriptsBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
     const logPanel = document.getElementById('log-panel');
+    
     if (scriptsPanel) {
       const isShow = scriptsPanel.style.display === 'none' || scriptsPanel.style.display === '';
       logPanel.style.display = 'none';
       scriptsPanel.style.display = isShow ? 'flex' : 'none';
       if (isShow) {
-        scriptsPanel.style.left = '50%';
-        scriptsPanel.style.top = '50%';
-        scriptsPanel.style.transform = 'translate(-50%, -50%)';
         updateScriptsList();
+        const rect = this.getBoundingClientRect();
+        scriptsPanel.style.top = (rect.bottom + 4) + 'px';
+        scriptsPanel.style.right = (window.innerWidth - rect.right) + 'px';
+        scriptsPanel.style.left = 'auto';
+      }
+    }
+  });
+
+  document.addEventListener('click', function(e) {
+    const panel = document.getElementById('scripts-panel');
+    const btn = document.getElementById('btn-scripts');
+    if (panel && panel.style.display === 'flex') {
+      if (!panel.contains(e.target) && !btn.contains(e.target)) {
+        panel.style.display = 'none';
       }
     }
   });
 
   // 新增腳本
-  document.getElementById('btn-new-script').addEventListener('click', () => {
+  document.getElementById('btn-new-script').addEventListener('click', function(e) {
+    e.stopPropagation();
     document.getElementById('script-type-modal').style.display = 'flex';
   });
 
@@ -633,9 +669,13 @@ function bindUIEvents() {
   });
 
   // 導入/導出
-  document.getElementById('btn-export-all').addEventListener('click', exportAllScripts);
+  document.getElementById('btn-export-all').addEventListener('click', function(e) {
+    e.stopPropagation();
+    exportAllScripts();
+  });
 
-  document.getElementById('btn-import-all').addEventListener('click', () => {
+  document.getElementById('btn-import-all').addEventListener('click', function(e) {
+    e.stopPropagation();
     document.getElementById('file-import').click();
   });
 

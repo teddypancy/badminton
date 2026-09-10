@@ -19,7 +19,7 @@ export let ballTrail = [];
 export function buildCourt() {
   const scene = getScene();
 
-  // 地板
+  // ---- 地板 ----
   const courtGeo = new THREE.PlaneGeometry(COURT.width_d, COURT.length);
   const courtMat = new THREE.MeshStandardMaterial({ color: 0x1b5e20, roughness: 0.4 });
   const courtFloor = new THREE.Mesh(courtGeo, courtMat);
@@ -27,7 +27,7 @@ export function buildCourt() {
   courtFloor.receiveShadow = true;
   scene.add(courtFloor);
 
-  // 外圍
+  // ---- 外圍 ----
   const outGeo = new THREE.PlaneGeometry(COURT.width_d + 3, COURT.length + 3);
   const outMat = new THREE.MeshStandardMaterial({ color: 0x0f2847, roughness: 0.6 });
   const outFloor = new THREE.Mesh(outGeo, outMat);
@@ -35,58 +35,102 @@ export function buildCourt() {
   outFloor.position.y = -0.01;
   scene.add(outFloor);
 
-  // 標線
+  // ---- 標線（使用 LineSegments） ----
   const points = [];
   const addLine = (x1, z1, x2, z2) => {
-    points.push(new THREE.Vector3(x1, 0.01, z1), new THREE.Vector3(x2, 0.01, z2));
+    points.push(new THREE.Vector3(x1, 0.02, z1), new THREE.Vector3(x2, 0.02, z2));
   };
 
-  const hw = COURT.width_d / 2, hl = COURT.length / 2;
-  addLine(-hw, -hl, hw, -hl);
+  const hw = COURT.width_d / 2;      // 雙打半寬 3.05m
+  const hws = COURT.width_s / 2;     // 單打半寬 2.59m
+  const hl = COURT.length / 2;       // 半長 6.7m
+
+  // ========================================
+  // 1. 雙打邊線（最外側）
+  // ========================================
+  // 左右邊線
+  addLine(-hw, -hl, -hw, hl);
   addLine(hw, -hl, hw, hl);
-  addLine(hw, hl, -hw, hl);
-  addLine(-hw, hl, -hw, -hl);
-  addLine(-hw, 0, hw, 0);
-  addLine(-hw, -COURT.service_line, hw, -COURT.service_line);
-  addLine(-hw, COURT.service_line, hw, COURT.service_line);
+  // 上下底線
+  addLine(-hw, -hl, hw, -hl);
+  addLine(-hw, hl, hw, hl);
+
+  // ========================================
+  // 2. 單打邊線（內側）
+  // ========================================
+  addLine(-hws, -hl, -hws, hl);
+  addLine(hws, -hl, hws, hl);
+
+  // ========================================
+  // 3. 雙打後發球線（距離底線 0.76m）
+  // ========================================
   addLine(-hw, -COURT.double_back, hw, -COURT.double_back);
   addLine(-hw, COURT.double_back, hw, COURT.double_back);
+
+  // ========================================
+  // 4. 單打發球線（服務線，距離球網 1.98m）
+  // ========================================
+  addLine(-hw, -COURT.service_line, hw, -COURT.service_line);
+  addLine(-hw, COURT.service_line, hw, COURT.service_line);
+
+  // ========================================
+  // 5. 中線（左右半場分割，只畫到發球線）
+  // ========================================
   addLine(0, -hl, 0, -COURT.service_line);
   addLine(0, hl, 0, COURT.service_line);
 
+  // ---- 創建標線 ----
   const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
   const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff });
   const lines = new THREE.LineSegments(lineGeo, lineMat);
   scene.add(lines);
 
-  // 球網
-  const postGeo = new THREE.CylinderGeometry(0.03, 0.03, COURT.net_height, 16);
+  // ========================================
+  // 6. 球網
+  // ========================================
+  // 網柱 - 在雙打邊線與球網的交點
+  const postGeo = new THREE.CylinderGeometry(0.04, 0.04, COURT.net_height, 16);
   const postMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8 });
 
+  // 左網柱（雙打邊線左側）
   const postL = new THREE.Mesh(postGeo, postMat);
   postL.position.set(-hw, COURT.net_height / 2, 0);
   scene.add(postL);
 
+  // 右網柱（雙打邊線右側）
   const postR = new THREE.Mesh(postGeo, postMat);
   postR.position.set(hw, COURT.net_height / 2, 0);
   scene.add(postR);
 
+  // 網面 - 從左網柱到右網柱
   const netGeo = new THREE.PlaneGeometry(COURT.width_d, 0.8);
   const netMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     transparent: true,
-    opacity: 0.45,
+    opacity: 0.4,
     side: THREE.DoubleSide
   });
   const netMesh = new THREE.Mesh(netGeo, netMat);
   netMesh.position.set(0, COURT.net_height - 0.4, 0);
   scene.add(netMesh);
 
-  const tapeGeo = new THREE.PlaneGeometry(COURT.width_d, 0.08);
+  // 網頂白帶
+  const tapeGeo = new THREE.PlaneGeometry(COURT.width_d, 0.06);
   const tapeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
   const tapeMesh = new THREE.Mesh(tapeGeo, tapeMat);
-  tapeMesh.position.set(0, COURT.net_height - 0.04, 0);
+  tapeMesh.position.set(0, COURT.net_height - 0.03, 0);
   scene.add(tapeMesh);
+
+  // ---- 可選：在單打邊線位置加小標記 ----
+  // 網柱在單打邊線位置的小標記點
+  const dotGeo = new THREE.SphereGeometry(0.03, 8, 8);
+  const dotMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const dotL = new THREE.Mesh(dotGeo, dotMat);
+  dotL.position.set(-hws, 0.02, 0);
+  scene.add(dotL);
+  const dotR = new THREE.Mesh(dotGeo, dotMat);
+  dotR.position.set(hws, 0.02, 0);
+  scene.add(dotR);
 }
 
 // ========== 建立羽球 ==========
@@ -124,7 +168,6 @@ export function buildPlayers() {
   const players = getPlayers(state.mode);
   const allIds = [...(players.A || []), ...(players.B || [])];
 
-  // 清除不存在的
   Object.keys(playerMeshes).forEach(id => {
     if (!allIds.includes(id)) {
       scene.remove(playerMeshes[id]);
@@ -166,14 +209,12 @@ export function sync3DPositions(atEnd = false) {
   const shot = getCurrentShot();
   if (!shot) return;
 
-  // 更新球員位置
   Object.entries(shot.players).forEach(([id, pos]) => {
     if (playerMeshes[id]) {
       playerMeshes[id].position.set(pos.x, 0, pos.z);
     }
   });
 
-  // 更新球
   if (shot.isSetup) {
     const serverTeam = shot.server || 'A';
     const serverId = (getPlayers(state.mode)[serverTeam] || [])[0];
@@ -221,7 +262,7 @@ function update3DTrajectory(shot) {
   scene.add(trajectoryMesh);
 }
 
-// ========== 球體尾跡 (黃色拖尾) ==========
+// ========== 球體尾跡 ==========
 
 export function updateBallTrail() {
   const scene = getScene();
@@ -233,17 +274,14 @@ export function updateBallTrail() {
 
   if (ballTrail.length < 2) return;
 
-  // 取最近 60 個點 (約1-2秒的軌跡)
   const trailPoints = ballTrail.slice(-60);
   const pts = trailPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
   
-  // 使用 Line 線條實現黃色拖尾
   const geo = new THREE.BufferGeometry().setFromPoints(pts);
   const mat = new THREE.LineBasicMaterial({
     color: 0xffd54f,
     transparent: true,
-    opacity: 0.8,
-    linewidth: 2
+    opacity: 0.8
   });
   trailMesh = new THREE.Line(geo, mat);
   scene.add(trailMesh);
