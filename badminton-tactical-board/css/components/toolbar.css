@@ -1,0 +1,97 @@
+/* ===== 3D 控制台 ===== */
+#integrated-toolbar {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  width: 340px;
+  background: var(--bg-panel);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  z-index: 95;
+  box-shadow: var(--shadow-lg);
+  transition: all 0.3s ease;
+}
+
+#integrated-toolbar.hidden {
+  display: none !important;
+}
+
+.tb-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  width: 100%;
+}
+
+.tb-row .row-label {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  min-width: 36px;
+  flex-shrink: 0;
+}
+
+.tb-btn {
+  padding: 5px 8px;
+  font-size: var(--font-md);
+  flex: 1;
+}
+
+.tb-btn-group {
+  display: flex;
+  gap: var(--gap-xs);
+  flex: 1;
+}
+
+.tb-btn-group .btn {
+  flex: 1;
+  padding: 4px 0;
+  font-size: var(--font-sm);
+  border-radius: var(--radius-md);
+}
+
+.tb-row input[type="range"] {
+  flex: 1;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+  background: transparent;
+  height: 4px;
+}
+
+/* ===== 拍數控制 ===== */
+.shot-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-xs);
+  background: var(--bg-panel-light);
+  padding: 2px 6px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+}
+
+.shot-counter {
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--text-accent);
+  min-width: 48px;
+  text-align: center;
+}
+
+/* ===== 手繪工具欄 ===== */
+#free-draw-toolbar {
+  display: none;
+  align-items: center;
+  gap: var(--gap-xs);
+  background: var(--bg-panel-light);
+  padding: 2px 6px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+}
+
+#free-draw-toolbar.active {
+  display: flex;
+}

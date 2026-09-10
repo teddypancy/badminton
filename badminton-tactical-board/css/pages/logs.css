@@ -1,0 +1,49 @@
+/* ===== 日誌列表項 ===== */
+.log-item {
+  padding: 8px 12px;
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--gap-xs);
+  background: var(--bg-panel-light);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.log-item:hover {
+  background: var(--bg-hover);
+}
+
+.log-item.current {
+  border-left-color: var(--color-primary);
+  background: rgba(245, 124, 0, 0.08);
+}
+
+.log-item .log-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-md);
+  font-weight: 500;
+}
+
+.log-item .log-detail {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.log-item .log-diag {
+  font-size: var(--font-xs);
+  margin-top: 2px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+}
+
+.log-item .log-diag.ok {
+  color: #81c784;
+}
+
+.log-item .log-diag.warn {
+  color: #ff8a80;
+}

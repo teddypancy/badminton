@@ -1,0 +1,274 @@
+/* ============================================================
+   響應式（必須最後載入）
+   ============================================================ */
+
+/* ===== 平板 ===== */
+@media (max-width: 1024px) {
+  #integrated-toolbar {
+    width: 300px;
+    padding: 8px 12px;
+    bottom: 12px;
+    right: 12px;
+  }
+
+  #panel-wrap {
+    width: 280px;
+    min-width: 200px;
+    padding: 8px 10px;
+  }
+
+  .modal-panel {
+    width: 400px;
+  }
+
+  .topbar-left .btn {
+    font-size: var(--font-md);
+    padding: 4px 10px;
+  }
+
+  .dropdown-panel {
+    width: 380px;
+  }
+}
+
+/* ===== 手機 ===== */
+@media (max-width: 768px) {
+  #topbar {
+    height: 44px;
+    padding: 0 10px;
+    flex-wrap: wrap;
+  }
+
+  #topbar .logo {
+    font-size: var(--font-base);
+  }
+
+  .topbar-left,
+  .topbar-right {
+    gap: var(--gap-xs);
+  }
+
+  .topbar-left .btn {
+    font-size: var(--font-xs);
+    padding: 3px 6px;
+    border-radius: var(--radius-sm);
+  }
+
+  #hud {
+    font-size: var(--font-xs);
+  }
+
+  .btn {
+    font-size: var(--font-sm);
+    padding: 4px 8px;
+    border-radius: var(--radius-md);
+  }
+
+  .btn-sm {
+    font-size: var(--font-xs);
+    padding: 3px 6px;
+  }
+
+  #drawer-header {
+    padding: 4px 8px;
+    min-height: 40px;
+  }
+
+  .mode-toggle .mode-btn {
+    font-size: var(--font-xs);
+    padding: 3px 8px;
+  }
+
+  .shot-controls {
+    padding: 2px 4px;
+  }
+
+  .shot-counter {
+    font-size: var(--font-sm);
+    min-width: 36px;
+  }
+
+  .icon-btn {
+    font-size: var(--font-md);
+    padding: 3px 6px;
+  }
+
+  #panel-wrap {
+    width: 200px;
+    min-width: 160px;
+    padding: 6px 8px;
+  }
+
+  .param-row label {
+    width: 48px;
+    font-size: var(--font-xs);
+  }
+
+  .param-btns button {
+    font-size: var(--font-xs);
+    padding: 3px 0;
+    min-width: 28px;
+  }
+
+  .slider-val {
+    font-size: var(--font-xs);
+    min-width: 32px;
+  }
+
+  #integrated-toolbar {
+    width: 220px;
+    padding: 6px 10px;
+    bottom: 8px;
+    right: 8px;
+  }
+
+  .tb-row .row-label {
+    font-size: var(--font-xs);
+    min-width: 28px;
+  }
+
+  .tb-btn {
+    font-size: var(--font-xs);
+    padding: 3px 6px;
+  }
+
+  .tb-btn-group .btn {
+    font-size: 9px;
+    padding: 3px 0;
+  }
+
+  #sideArcCanvas {
+    height: 70px;
+  }
+
+  .modal-panel {
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 40px);
+  }
+
+  .modal-card {
+    padding: 16px;
+    min-width: 200px;
+  }
+
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .type-btn {
+    padding: 10px 12px;
+    font-size: var(--font-base);
+  }
+
+  #free-draw-toolbar {
+    padding: 2px 4px;
+  }
+
+  .tool-btn {
+    font-size: var(--font-lg);
+    padding: 3px 6px;
+  }
+
+  .color-dot {
+    width: 18px;
+    height: 18px;
+  }
+
+  #mini-selector-popup {
+    min-width: 120px;
+    padding: 6px 8px;
+  }
+
+  .dropdown-panel {
+    width: calc(100vw - 16px);
+    right: 8px;
+    top: 48px;
+    max-height: calc(100vh - 60px);
+  }
+
+  .script-item {
+    flex-wrap: wrap;
+    gap: var(--gap-xs);
+  }
+
+  .script-item .info {
+    flex-wrap: wrap;
+    gap: var(--gap-xs);
+  }
+
+  .script-item .info .meta {
+    font-size: var(--font-xs);
+  }
+
+  .script-item .actions button {
+    font-size: var(--font-xs);
+    padding: 2px 8px;
+  }
+}
+
+/* ===== 小手機 ===== */
+@media (max-width: 480px) {
+  #topbar .logo {
+    font-size: var(--font-sm);
+  }
+
+  .topbar-left .btn {
+    font-size: 9px;
+    padding: 2px 5px;
+  }
+
+  .btn {
+    font-size: var(--font-xs);
+    padding: 3px 6px;
+  }
+
+  #integrated-toolbar {
+    width: 180px;
+    padding: 4px 8px;
+  }
+
+  #panel-wrap {
+    width: 160px;
+    min-width: 130px;
+    padding: 4px 6px;
+  }
+
+  .param-row {
+    font-size: var(--font-xs);
+    gap: var(--gap-xs);
+  }
+
+  .param-row label {
+    width: 40px;
+    font-size: 9px;
+  }
+
+  .slider-container .step-btn {
+    font-size: var(--font-sm);
+    padding: 1px 6px;
+  }
+
+  .shot-controls {
+    gap: 2px;
+  }
+
+  .shot-counter {
+    font-size: var(--font-xs);
+    min-width: 30px;
+  }
+
+  .mode-toggle .mode-btn {
+    font-size: 9px;
+    padding: 2px 6px;
+  }
+
+  .modal-card {
+    padding: 12px;
+  }
+
+  .dropdown-panel {
+    width: calc(100vw - 12px);
+    right: 6px;
+    top: 44px;
+  }
+}

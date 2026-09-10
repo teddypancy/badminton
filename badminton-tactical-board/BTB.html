@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>羽球戰術板 v0.1</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>羽球戰術板 v0.2</title>
+  <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
 
@@ -14,10 +14,10 @@
   <div class="topbar-left">
     <button class="btn btn-outline" id="btn-toggle-tb">🎮 3D控制台</button>
     <button class="btn btn-outline" id="btn-drawer">📐 2D戰術板</button>
-    <button class="btn btn-outline" id="btn-scripts">📁 腳本管理</button>
-    <button class="btn btn-outline" id="btn-log">📋 載入中...</button>
   </div>
   <div class="topbar-right">
+    <button class="btn btn-outline" id="btn-scripts">📁 腳本管理</button>
+    <button class="btn btn-outline" id="btn-log">📋 載入中...</button>
     <span id="hud">📊 共 0 拍</span>
   </div>
 </header>
@@ -60,7 +60,6 @@
 
 <!-- ===== 2D 戰術板抽屜 ===== -->
 <div id="drawer2d">
-  <!-- 標題欄 -->
   <div id="drawer-header">
     <div class="drawer-left">
       <div class="mode-toggle">
@@ -79,7 +78,6 @@
     </div>
     <div class="drawer-right">
       <div id="free-draw-toolbar">
-        <!-- 順序：選取 → 畫筆 → 7色 → 橡皮擦 → 撤銷 → 清空 -->
         <button class="btn tool-btn" data-tool="select">👆</button>
         <button class="btn tool-btn active" data-tool="pencil">✏️</button>
         <div class="divider-sm"></div>
@@ -93,7 +91,6 @@
     </div>
   </div>
 
-  <!-- 主體 -->
   <div id="drawer-body">
     <div id="court-wrap">
       <canvas id="court2d"></canvas>
@@ -122,27 +119,27 @@
 <!-- ===== Toast 提示 ===== -->
 <div id="toast"></div>
 
-<!-- ===== 日誌面板（置中） ===== -->
-<div id="log-panel" class="modal-panel" style="display:none;">
-  <div class="modal-header">
+<!-- ===== 日誌面板（右上角下拉） ===== -->
+<div id="log-panel" class="dropdown-panel" style="display:none;">
+  <div class="dropdown-header">
     <span id="log-title">📋 回合日誌</span>
     <button class="btn btn-close" id="btn-log-close">✕</button>
   </div>
-  <div class="modal-body" id="log-list"></div>
+  <div class="dropdown-body" id="log-list"></div>
 </div>
 
-<!-- ===== 腳本管理面板（置中） ===== -->
-<div id="scripts-panel" class="modal-panel" style="display:none;">
-  <div class="modal-header">
+<!-- ===== 腳本管理面板（右上角下拉） ===== -->
+<div id="scripts-panel" class="dropdown-panel" style="display:none;">
+  <div class="dropdown-header">
     <span>📁 腳本管理</span>
-    <button class="btn btn-success btn-sm" id="btn-new-script">＋ 新增</button>
-  </div>
-  <div class="modal-toolbar">
-    <button class="btn btn-outline btn-sm" id="btn-import-all">📥 導入</button>
-    <button class="btn btn-outline btn-sm" id="btn-export-all">📤 導出</button>
+    <div class="dropdown-header-actions">
+      <button class="btn btn-outline btn-sm" id="btn-import-all">📥 導入</button>
+      <button class="btn btn-outline btn-sm" id="btn-export-all">📤 導出</button>
+      <button class="btn btn-success btn-sm" id="btn-new-script">＋ 新增</button>
+    </div>
     <input type="file" id="file-import" accept=".json" style="display:none;">
   </div>
-  <div class="modal-body" id="scripts-list"></div>
+  <div class="dropdown-body" id="scripts-list"></div>
 </div>
 
 <!-- ===== 新增腳本類型選擇彈窗 ===== -->

@@ -1,0 +1,57 @@
+/* ===== CSS 變數 ===== */
+:root {
+  /* 背景色 */
+  --bg-primary: #0b1628;
+  --bg-secondary: #0f2240;
+  --bg-panel: rgba(15, 34, 64, 0.92);
+  --bg-panel-light: rgba(255, 255, 255, 0.03);
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --bg-active: rgba(255, 255, 255, 0.12);
+
+  /* 主題色 */
+  --color-primary: #f57c00;
+  --color-primary-hover: #e65100;
+  --color-success: #2e7d32;
+  --color-success-hover: #1b5e20;
+  --color-danger: #c62828;
+  --color-danger-hover: #b71c1c;
+
+  /* 文字色 */
+  --text-primary: #e8edf5;
+  --text-secondary: #b0c4de;
+  --text-muted: #78909c;
+  --text-accent: #ffd54f;
+  --text-info: #90caf9;
+
+  /* 邊框 */
+  --border-color: rgba(255, 255, 255, 0.06);
+  --border-color-light: rgba(255, 255, 255, 0.10);
+
+  /* 間距 */
+  --gap-xs: 4px;
+  --gap-sm: 6px;
+  --gap-md: 8px;
+  --gap-lg: 12px;
+  --gap-xl: 16px;
+
+  /* 圓角 */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+
+  /* 字體大小 */
+  --font-xs: 10px;
+  --font-sm: 11px;
+  --font-md: 12px;
+  --font-base: 13px;
+  --font-lg: 14px;
+  --font-xl: 16px;
+
+  /* 陰影 */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 64px rgba(0, 0, 0, 0.6);
+}
