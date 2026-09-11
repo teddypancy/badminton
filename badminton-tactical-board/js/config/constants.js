@@ -28,3 +28,36 @@ export const LIMITS = {
   apexMin: 1.2,
   serveHeight: 1.15  // 發球高度
 };
+
+// ========== 初速度範圍（km/h）v0.2A ==========
+// 按場景與球路分類，作為全局數據，方便以後針對性微調
+export const SPEED_RANGES = {
+  // 後場
+  backcourt: {
+    high_arc:   { min: 120, max: 160 },  // 高球、平高球
+    soft_press: { min: 150, max: 200 },  // 輕壓
+    fast_press: { min: 200, max: 250 },  // 快壓
+    near_flat:  { min: 80,  max: 120 },  // 近平球（吊球）
+    far_flat:   { min: 120, max: 180 }   // 遠平球（抽球）
+  },
+  // 前場
+  frontcourt: {
+    high_soft_press: { min: 150, max: 200 },  // 高位輕壓
+    mid_low_near:    { min: 50,  max: 70 },   // 中低位平球（近）
+    mid_low_far:     { min: 90,  max: 120 },  // 中低位平球（遠）
+    high_lift:       { min: 70,  max: 100 }   // 高弧度挑後場
+  },
+  // 發球
+  serve: {
+    backcourt_high: { min: 70, max: 100 },  // 發後場高弧度
+    net_short:      { min: 30, max: 60 }    // 發網前
+  }
+};
+
+// ========== 物理常數 v0.2A ==========
+export const PHYSICS = {
+  gravity: 9.8,               // 重力加速度 m/s²
+  airResistanceK: 0.008,      // 空氣阻力係數（備用）
+  resistanceUp: 1.3,          // 上升段時間修正係數
+  resistanceDown: 1.4         // 下降段時間修正係數
+};

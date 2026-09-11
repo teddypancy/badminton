@@ -2,13 +2,13 @@ import { deepClone } from '../utils/helpers.js';
 
 // ========== 全局狀態 ==========
 
-// 默認狀態
 const defaultState = {
-  appMode: 'smart',      // 'smart' | 'free'  (移除 manual)
+  appMode: 'smart',      // 'smart' | 'free'
   mode: 'singles',       // 'singles' | 'doubles' | '2v1' | '3v1'
   shots: [],
   currentShot: 0,
   playing: false,
+  stepMode: false,       // 單節模式（新增）
   playSpeed: 1,
   selected: null,
   snapEnabled: true,
@@ -26,10 +26,9 @@ const defaultState = {
   }
 };
 
-// 狀態實例
 let state = deepClone(defaultState);
 
-// 動畫時間
+// 動畫時間（統一來源）
 let animTime = 0;
 
 // ========== 狀態操作函數 ==========

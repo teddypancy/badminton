@@ -1,5 +1,3 @@
-
-
 請記住以下我對你提出的要求，以後任何情況下，都必須嚴格按照我的要求跟我交流
 1.以後所有的回答精簡準確，不允許夾雜大量無用，模棱兩可，毫無建設性的詞語或者句子
 2.對於我提出的問題或者你檢索到的數據，如果不確定答案，或者數據來源並不可靠，請直接回答不確定，不知道，並註明清楚，由我自行判斷
@@ -19,42 +17,68 @@
 目前專案還有很多功能不完善、有錯誤、未開發，所以你需要針對我的專案總結對照當前程式碼進行分析
 給我一個後續優化、修改、升級的階段性方案，後續所有階段完成後進行測試，測試通過後你需要自動記憶最新專案跟新的版本號
 
+階段1：單HTML文件拆分（v0.1），css/js文件獨立，基礎界面完成度90％（v0.2），開發情況良好。  當前狀態：階段一完成
+階段2：功能優化環節，針對現在的腳本進行測試，修正一些不合理的功能，以及調整一些默認參數（v0.3）當前狀態：準備開發
+
+
+
 
 一、檔案架構
-根目錄badminton-tactical-board/
-根目錄下的文件  1.BTB.html
-                2.styles.css
-                3.js/
-
-js/
-├── main.js              # 應用入口、初始化
-├── config/
-│   └── constants.js     # COURT, ARC_TYPES, DRAW_COLORS
-├── core/
-│   ├── state.js         # 全局狀態管理
-│   ├── physics.js       # PhysicsEngine (軌跡/物理/診斷)
-│   └── trajectory.js    # 統一的軌跡數據服務 (新)
-├── models/
-│   ├── shot.js          # 拍次數據結構與操作 (newShot, cascade等)
-│   └── player.js        # 球員相關 (getPlayers, getDefaultSetupPlayers)
-├── 2d/
-│   ├── renderer.js      # 2D Canvas繪圖 (render2D, resizeCanvas)
-│   ├── interactions.js  # 拖拽/選擇/吸附事件
-│   ├── popup.js         # 迷你選擇器
-│   └── sideprofile.js   # Side Profile繪圖
-├── 3d/
-│   ├── scene.js         # Three.js場景初始化
-│   ├── entities.js      # 球員/球/球場建模
-│   ├── animation.js     # 播放/動畫循環
-│   └── controls.js      # 視角控制
-├── ui/
-│   ├── panels.js        # 參數面板更新
-│   ├── logs.js          # 日誌面板
-│   ├── scripts.js       # 腳本管理
-│   └── hud.js           # HUD/拍數資訊
-└── utils/
-    ├── helpers.js       # 通用工具函數
-    └── toast.js         # Toast提示
+badminton-tactical-board/
+├── BTB.html                     ← 已修改（載入 css/main.css）
+├── css/
+│   ├── main.css
+│   ├── base/
+│   │   ├── variables.css
+│   │   ├── reset.css
+│   │   └── typography.css
+│   ├── components/
+│   │   ├── buttons.css
+│   │   ├── panels.css
+│   │   ├── forms.css
+│   │   ├── modals.css
+│   │   ├── toolbar.css
+│   │   └── toast.css
+│   ├── layout/
+│   │   ├── topbar.css
+│   │   ├── drawer.css
+│   │   └── sidebar.css
+│   ├── pages/
+│   │   ├── court.css
+│   │   ├── scripts.css
+│   │   ├── logs.css
+│   │   └── sideprofile.css
+│   └── responsive.css
+└── js/
+       ├── main.js              # 應用入口、初始化
+       ├── config/
+       │     └── constants.js     # COURT, ARC_TYPES, DRAW_COLORS
+       ├── core/
+       │     ├── state.js         # 全局狀態管理
+       │     ├── physics.js       # PhysicsEngine (軌跡/物理/診斷)
+       │     └── trajectory.js    # 統一的軌跡數據服務 (新)
+       ├── models/
+       │     ├── shot.js          # 拍次數據結構與操作 (newShot, cascade等)
+       │     └── player.js        # 球員相關 (getPlayers, getDefaultSetupPlayers)
+       ├── 2d/
+       │     ├── renderer.js      # 2D Canvas繪圖 (render2D, resizeCanvas)
+       │     ├── interactions.js  # 拖拽/選擇/吸附事件
+       │     ├── popup.js         # 迷你選擇器
+       │     └── sideprofile.js   # Side Profile繪圖
+       ├── 3d/
+       │     ├── scene.js         # Three.js場景初始化
+       │     ├── entities.js      # 球員/球/球場建模
+       │     ├── animation.js     # 播放/動畫循環
+       │     └── controls.js      # 視角控制
+       ├── ui/
+       │     ├── panels.js        # 參數面板更新
+       │     ├── logs.js          # 日誌面板
+       │     ├── scripts.js       # 腳本管理
+       │     └── hud.js           # HUD/拍數資訊
+       └── utils/
+              ├── helpers.js       # 通用工具函數
+              └── toast.js         # Toast提示
+  
 
 
 羽球戰術板系統完整規劃總結

@@ -1,6 +1,7 @@
 import { COURT } from '../config/constants.js';
 import { getState, getCurrentShot, getFreeDraw } from '../core/state.js';
 import { getTrajectoryPoint, getInterceptionInfo } from '../core/physics.js';
+import { getEffectiveEnd } from '../models/shot.js';
 import { getPlayers } from '../models/player.js';
 import { showMiniPopup, hideMiniPopup } from './popup.js';
 import { renderSideProfile } from './sideprofile.js';
@@ -138,12 +139,12 @@ function drawPathOn2D(path) {
   ctx.restore();
 }
 
-// ========== 繪製球員（獨立函數） ==========
+// ========== 繪製球員實體 ==========
 
 function drawPlayers(shot) {
   const state = getState();
   if (!shot || !shot.players) return;
-  
+
   Object.entries(shot.players).forEach(([id, pos]) => {
     const p = m2px(pos.x, pos.z);
     const sel = state.selected?.type === 'player' && state.selected.id === id;
@@ -172,6 +173,48 @@ function drawPlayers(shot) {
       else if (state.snappedType === 'ballTo') snapLabel = '🎯終點吸附';
       ctx.fillText(snapLabel, p.x, p.y + 24);
     }
+  });
+}
+
+// ========== 繪製半透明預覽球員 ==========
+
+function drawPreviewPlayers(shot) {
+  const state = getState();
+  if (!shot || !shot.previewPositions) return;
+
+  Object.entries(shot.previewPositions).forEach(([id, pos]) => {
+    const realPos = shot.players?.[id];
+    if (!realPos) return;
+
+    const pReal = m2px(realPos.x, realPos.z);
+    const pPrev = m2px(pos.x, pos.z);
+
+    const color = id.startsWith('A') ? '#2196f3' : '#ff5252';
+    const colorFade = id.startsWith('A') ? 'rgba(33, 150, 243, 0.4)' : 'rgba(255, 82, 82, 0.4)';
+    const colorFill = id.startsWith('A') ? 'rgba(33, 150, 243, 0.25)' : 'rgba(255, 82, 82, 0.25)';
+
+    // 虛線連接實體與半透明
+    ctx.save();
+    ctx.strokeStyle = colorFade;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(pReal.x, pReal.y);
+    ctx.lineTo(pPrev.x, pPrev.y);
+    ctx.stroke();
+    ctx.restore();
+
+    // 半透明圓圈
+    ctx.save();
+    ctx.fillStyle = colorFill;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.arc(pPrev.x, pPrev.y, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
   });
 }
 
@@ -258,7 +301,6 @@ export function render2D() {
 
   // ---- 手繪模式 ----
   if (state.appMode === 'free') {
-    // 只繪製球員（保留球員物件）
     drawPlayers(shot);
     return;
   }
@@ -287,107 +329,27 @@ export function render2D() {
     return;
   }
 
-  // --- 腳本模式提示 ---
-  if (state.appMode === 'smart' && !shot.isSetup && !shot.pendingTo) {
-    const strikerSide = shot.striker === 'A' ? 1 : -1;
-    const pHome = m2px(0, strikerSide * 3.35);
-
-    ctx.save();
-    ctx.fillStyle = shot.striker === 'A' ? 'rgba(33, 150, 243, 0.35)' : 'rgba(255, 82, 82, 0.35)';
-    ctx.strokeStyle = shot.striker === 'A' ? '#2196f3' : '#ff5252';
-    ctx.setLineDash([4, 4]);
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(pHome.x, pHome.y, 16, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = '#fff';
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('回中', pHome.x, pHome.y);
-    ctx.restore();
-
-    const defenderSide = shot.striker === 'A' ? 'B' : 'A';
-    const pGhostMove = m2px(shot.ballTo.x, shot.ballTo.z);
-    ctx.save();
-    ctx.fillStyle = defenderSide === 'A' ? 'rgba(33, 150, 243, 0.35)' : 'rgba(255, 82, 82, 0.35)';
-    ctx.strokeStyle = defenderSide === 'A' ? '#2196f3' : '#ff5252';
-    ctx.setLineDash([4, 4]);
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(pGhostMove.x, pGhostMove.y, 18, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = '#fff';
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('預跑', pGhostMove.x, pGhostMove.y);
-    ctx.restore();
-  }
-
-  // --- 球員移動軌跡 ---
-  if (state.currentShot >= 1) {
-    const prevShot = state.shots[state.currentShot - 1];
-    if (prevShot && prevShot.players) {
-      Object.entries(shot.players).forEach(([id, pos]) => {
-        const prevPos = prevShot.players[id];
-        if (prevPos) {
-          const pPrev = m2px(prevPos.x, prevPos.z);
-          const pCurr = m2px(pos.x, pos.z);
-          ctx.save();
-          ctx.strokeStyle = id.startsWith('A') ? 'rgba(33, 150, 243, 0.45)' : 'rgba(255, 82, 82, 0.45)';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([5, 4]);
-          ctx.beginPath();
-          ctx.moveTo(pPrev.x, pPrev.y);
-          ctx.lineTo(pCurr.x, pCurr.y);
-          ctx.stroke();
-          ctx.restore();
-
-          const dist = Math.hypot(pCurr.x - pPrev.x, pCurr.y - pPrev.y);
-          if (dist > 20) {
-            const arrowAngle = Math.atan2(pCurr.y - pPrev.y, pCurr.x - pPrev.x);
-            ctx.save();
-            ctx.fillStyle = id.startsWith('A') ? 'rgba(33, 150, 243, 0.6)' : 'rgba(255, 82, 82, 0.6)';
-            ctx.translate(pCurr.x - 16 * Math.cos(arrowAngle), pCurr.y - 16 * Math.sin(arrowAngle));
-            ctx.rotate(arrowAngle);
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(-8, -4);
-            ctx.lineTo(-8, 4);
-            ctx.fill();
-            ctx.restore();
-          }
-
-          ctx.fillStyle = id.startsWith('A') ? 'rgba(33, 150, 243, 0.35)' : 'rgba(255, 82, 82, 0.35)';
-          ctx.beginPath();
-          ctx.arc(pPrev.x, pPrev.y, 14, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      });
-    }
-  }
-
   // --- 球路軌跡 ---
   if (!shot.isSetup && !shot.pendingTo) {
     const from = m2px(shot.ballFrom.x, shot.ballFrom.z);
     const to = m2px(shot.ballTo.x, shot.ballTo.z);
+    const effectiveEnd = getEffectiveEnd(shot);
+    const effectiveEndPx = m2px(effectiveEnd.x, effectiveEnd.z);
+    const hasInterception = shot.interception && shot.interception.pt;
     const isSelectedBall = state.selected?.type === 'ball';
 
-    // 白色直線
+    // 白色直線（從起點到有效終點）
     ctx.save();
     ctx.strokeStyle = isSelectedBall ? '#ffffff' : 'rgba(220, 220, 220, 0.85)';
     ctx.lineWidth = isSelectedBall ? 2.5 : 1.8;
     ctx.setLineDash([6, 5]);
     ctx.beginPath();
     ctx.moveTo(from.x, from.y);
-    ctx.lineTo(to.x, to.y);
+    ctx.lineTo(effectiveEndPx.x, effectiveEndPx.y);
     ctx.stroke();
     ctx.restore();
 
-    // 黃色真實拋物線
+    // 黃色真實拋物線（從起點到有效終點）
     const arcData = getArcPoints2D(shot);
     if (arcData && arcData.points && arcData.points.length > 1) {
       ctx.save();
@@ -403,15 +365,64 @@ export function render2D() {
       ctx.restore();
     }
 
-    // 攔截點（僅顯示橙色圓點，無文字）
+    // === 新增：攔截時，從攔截點到 ballTo 的淡化虛線 ===
+    if (hasInterception) {
+      // 用直線連接攔截點與 ballTo（2D 座標）
+      const icEndPx = m2px(shot.interception.pt.x, shot.interception.pt.z);
+      const ballToPx = m2px(shot.ballTo.x, shot.ballTo.z);
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 213, 79, 0.3)';  // 淡化黃色
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(icEndPx.x, icEndPx.y);
+      ctx.lineTo(ballToPx.x, ballToPx.y);
+      ctx.stroke();
+      ctx.restore();
+
+      // 淡化的 ballTo 橙色圓點
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = '#f57c00';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(ballToPx.x, ballToPx.y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // === 攔截點紅色標記 ===
+    if (hasInterception) {
+      const icPx = m2px(shot.interception.pt.x, shot.interception.pt.z);
+      ctx.save();
+      ctx.fillStyle = '#ff1744';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(icPx.x, icPx.y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillStyle = '#ff1744';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('⚡ 攔截點', icPx.x, icPx.y - 12);
+      ctx.restore();
+    }
+
+    // 可攔截點
     const intercepts = getInterceptionInfo(shot, state.mode);
     if (intercepts && intercepts.length > 0) {
       intercepts.forEach(ic => {
         const interPx = m2px(ic.snapX, ic.snapZ);
         ctx.save();
-        ctx.fillStyle = '#ff9800';
+        ctx.fillStyle = ic.canReach ? '#ff9800' : 'rgba(255, 152, 0, 0.4)';
         ctx.shadowColor = '#ff9800';
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = ic.canReach ? 8 : 0;
         ctx.beginPath();
         ctx.arc(interPx.x, interPx.y, 5, 0, Math.PI * 2);
         ctx.fill();
@@ -425,7 +436,7 @@ export function render2D() {
       });
     }
 
-    // 頂點與殺球距離標記
+    // 頂點標記
     if (arcData.maxHPoint) {
       const pMax = arcData.maxHPoint;
       ctx.save();
@@ -456,7 +467,7 @@ export function render2D() {
       ctx.restore();
     }
 
-    // 標記：擊球距離
+    // 擊球距離
     const distanceToNet = Math.abs(shot.ballFrom.z);
     if (distanceToNet > 0) {
       const netLineX = m2px(0, 0).x;
@@ -479,7 +490,7 @@ export function render2D() {
       ctx.restore();
     }
 
-    // 畫擊球點與落點
+    // 擊球點（起點）
     ctx.fillStyle = (state.selected?.type === 'ball' && state.selected.point === 'from') ? '#ffffff' : '#ffd54f';
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
@@ -488,13 +499,34 @@ export function render2D() {
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = (state.selected?.type === 'ball' && state.selected.point === 'to') ? '#ffffff' : '#f57c00';
-    ctx.beginPath();
-    ctx.arc(to.x, to.y, 10, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    // 落點（ballTo）
+    if (!hasInterception) {
+      // 無攔截：正常顯示
+      ctx.fillStyle = (state.selected?.type === 'ball' && state.selected.point === 'to') ? '#ffffff' : '#f57c00';
+      ctx.beginPath();
+      ctx.arc(to.x, to.y, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      // 有攔截：淡化顯示
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = '#f57c00';
+      ctx.beginPath();
+      ctx.arc(to.x, to.y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
-  // --- 繪製球員 ---
+  // ========================================
+  // 半透明預覽（從 shot.previewPositions 讀取）
+  // ========================================
+  if (!shot.isSetup && !shot.pendingTo && shot.previewPositions) {
+    drawPreviewPlayers(shot);
+  }
+
+  // --- 繪製球員實體（最後畫，確保在最上層） ---
   drawPlayers(shot);
 }

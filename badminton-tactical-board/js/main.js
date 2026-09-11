@@ -2,7 +2,7 @@
 
 import { COURT, ARC_TYPES, DRAW_COLORS } from './config/constants.js';
 import { showToast } from './utils/toast.js';
-import { getState, setState, getShots, getCurrentShot, getCurrentIndex, setCurrentIndex, pushHistory } from './core/state.js';
+import { getState, setState, getShots, getCurrentShot, getCurrentIndex, setCurrentIndex, pushHistory, getAnimTime, setAnimTime } from './core/state.js';
 import { getPlayers, getDefaultSetupPlayers, detectHitLevel } from './models/player.js';
 import { getTrajectoryPoint, getShotDuration, getTotalRallyDuration, checkPhysics, getInterceptionInfo } from './core/physics.js';
 import { newShot, initDemo, autoMatchShotProperties, applySmartPositions, cascadeBallPositions, updateShot1Server } from './models/shot.js';
@@ -98,6 +98,7 @@ window.setArcType = function(type) {
   const state = getState();
   if (shot && !shot.isSetup) {
     shot.arcType = type;
+    shot.apexOverride = false;  // 切換球路 → 重設 Apex 為新預設
     const shots = getShots();
     autoMatchShotProperties(shot, shots, state.mode, state.appMode);
     cascadeBallPositions(getCurrentIndex(), shots, state.mode, state.appMode);
@@ -147,6 +148,7 @@ window.setApexHeight = function(h) {
   const shot = getCurrentShot();
   if (shot && !shot.isSetup) {
     shot.apexHeight = Math.max(1.0, Math.min(8.0, h));
+    shot.apexOverride = true;  // 手動調 → 標記
     render2D();
     sync3DPositions();
     renderSideProfile(shot);
@@ -164,6 +166,7 @@ window.setApexPos = function(pos) {
   const shot = getCurrentShot();
   if (shot && !shot.isSetup) {
     shot.apexPos = Math.max(0.05, Math.min(0.95, pos));
+    shot.apexOverride = true;  // 手動調 → 標記
     render2D();
     sync3DPositions();
     renderSideProfile(shot);
@@ -219,8 +222,7 @@ function updateLogButton() {
 function init() {
   console.log('🏸 初始化開始...');
 
-  window.__animTime = 0;
-  window.__stepTargetTime = undefined;
+  setAnimTime(0);
 
   const sceneResult = initScene();
   if (!sceneResult) {
@@ -248,12 +250,17 @@ function init() {
   initSideProfile();
   initInteractions();
 
-  const state = getState();
-  state.shots = [];
-  initDemo(state.shots, state.mode, state.appMode);
-
-  window.setCurrentShot(0);
-  syncCurrentToLibrary();
+  // 優先從 localStorage 載入腳本
+  const scriptLib = getScriptLibrary();
+  if (scriptLib.length > 0 && scriptLib[0].data && scriptLib[0].data.shots && scriptLib[0].data.shots.length > 0) {
+    loadScriptFromLibrary(scriptLib[0].id);
+  } else {
+    const state = getState();
+    state.shots = [];
+    initDemo(state.shots, state.mode, state.appMode);
+    window.setCurrentShot(0);
+    syncCurrentToLibrary();
+  }
 
   setTimeout(() => {
     setCameraView('45');
@@ -264,7 +271,7 @@ function init() {
   updateLogButton();
   updateHUD();
 
-  // 3D控制台默認收起，按鈕不高亮
+  // 3D控制台默認收起
   const tb = document.getElementById('integrated-toolbar');
   if (tb) tb.classList.add('hidden');
   const tbBtn = document.getElementById('btn-toggle-tb');
@@ -298,11 +305,6 @@ function bindUIEvents() {
     }
   });
 
-  document.getElementById('btn-close-drawer').addEventListener('click', () => {
-    drawer.classList.remove('open');
-    drawerBtn.classList.remove('active');
-  });
-
   // 3D控制台
   document.getElementById('btn-toggle-tb').addEventListener('click', () => {
     const tb = document.getElementById('integrated-toolbar');
@@ -319,12 +321,18 @@ function bindUIEvents() {
     const state = getState();
     const shots = getShots();
     const totalDur = getTotalRallyDuration(shots);
-    
+
     if (state.playing) {
       state.playing = false;
       playBtn.textContent = '▶ 播放';
     } else {
-      if (window.__animTime >= totalDur) window.__animTime = 0;
+      let animTime = getAnimTime();
+      if (animTime >= totalDur) {
+        setAnimTime(0);
+        window.setCurrentShot(0, true);
+        clearBallTrail();
+        if (window.__clearTrail) window.__clearTrail();
+      }
       state.playing = true;
       playBtn.textContent = '⏸ 暫停';
     }
@@ -333,8 +341,9 @@ function bindUIEvents() {
   stopBtn.addEventListener('click', () => {
     const state = getState();
     state.playing = false;
-    window.__animTime = 0;
-    window.__stepTargetTime = undefined;
+    state.stepMode = false;
+    stepBtn.classList.remove('active');
+    setAnimTime(0);
     playBtn.textContent = '▶ 播放';
     document.getElementById('timeline').value = 0;
     window.setCurrentShot(0, true);
@@ -343,67 +352,28 @@ function bindUIEvents() {
     if (window.__clearTrail) window.__clearTrail();
   });
 
-  let stepModeActive = false;
   stepBtn.addEventListener('click', () => {
     const state = getState();
     const shots = getShots();
     const totalDur = getTotalRallyDuration(shots);
-    
-    stepModeActive = !stepModeActive;
-    stepBtn.classList.toggle('active', stepModeActive);
 
-    if (stepModeActive) {
-      if (state.playing) {
-        state.playing = false;
-        playBtn.textContent = '▶ 播放';
-      }
-      
-      if (window.__animTime >= totalDur) {
-        window.__animTime = 0;
-        document.getElementById('timeline').value = 0;
+    state.stepMode = !state.stepMode;
+    stepBtn.classList.toggle('active', state.stepMode);
+
+    if (state.stepMode) {
+      let animTime = getAnimTime();
+      if (animTime >= totalDur) {
+        setAnimTime(0);
         window.setCurrentShot(0, true);
         clearBallTrail();
         if (window.__clearTrail) window.__clearTrail();
       }
-      
-      playOneStep();
+      if (!state.playing) {
+        state.playing = true;
+        playBtn.textContent = '⏸ 暫停';
+      }
     }
   });
-
-  function playOneStep() {
-    const state = getState();
-    const shots = getShots();
-    const totalDur = getTotalRallyDuration(shots);
-    
-    if (window.__animTime >= totalDur) {
-      window.__animTime = 0;
-      document.getElementById('timeline').value = 0;
-      window.setCurrentShot(0, true);
-      clearBallTrail();
-      if (window.__clearTrail) window.__clearTrail();
-      return;
-    }
-
-    let accumulatedTime = 0;
-    let targetTime = window.__animTime;
-    
-    for (let i = 1; i < shots.length; i++) {
-      const dur = getShotDuration(shots[i]);
-      if (targetTime >= accumulatedTime && targetTime < accumulatedTime + dur) {
-        targetTime = accumulatedTime + dur;
-        break;
-      }
-      accumulatedTime += dur;
-    }
-    
-    if (targetTime === window.__animTime) {
-      targetTime = totalDur;
-    }
-
-    state.playing = true;
-    playBtn.textContent = '⏸ 暫停';
-    window.__stepTargetTime = targetTime;
-  }
 
   // 時間軸
   document.getElementById('timeline').addEventListener('input', (e) => {
@@ -413,13 +383,14 @@ function bindUIEvents() {
     const percent = parseFloat(e.target.value);
     const shots = getShots();
     const totalDur = getTotalRallyDuration(shots);
-    window.__animTime = (percent / 100) * totalDur;
+    const newTime = (percent / 100) * totalDur;
+    setAnimTime(newTime);
 
     let accumulatedTime = 0;
     for (let i = 1; i < shots.length; i++) {
       const s = shots[i];
       const dur = getShotDuration(s);
-      if (window.__animTime >= accumulatedTime && window.__animTime <= accumulatedTime + dur) {
+      if (newTime >= accumulatedTime && newTime <= accumulatedTime + dur) {
         window.setCurrentShot(i);
         renderSideProfile(s);
         break;
@@ -561,7 +532,7 @@ function bindUIEvents() {
   logBtn.addEventListener('click', function(e) {
     e.stopPropagation();
     const scriptsPanel = document.getElementById('scripts-panel');
-    
+
     if (logPanel) {
       const isShow = logPanel.style.display === 'none' || logPanel.style.display === '';
       scriptsPanel.style.display = 'none';
@@ -598,7 +569,7 @@ function bindUIEvents() {
   scriptsBtn.addEventListener('click', function(e) {
     e.stopPropagation();
     const logPanel = document.getElementById('log-panel');
-    
+
     if (scriptsPanel) {
       const isShow = scriptsPanel.style.display === 'none' || scriptsPanel.style.display === '';
       logPanel.style.display = 'none';
@@ -643,9 +614,9 @@ function bindUIEvents() {
     btn.addEventListener('click', () => {
       const type = btn.dataset.type;
       const typeFormats = { singles: '[單打]', doubles: '[雙打]', '2v1': '[2-1式]', '3v1': '[3-1式]' };
-      
+
       document.getElementById('script-type-modal').style.display = 'none';
-      
+
       const defaultName = `${typeFormats[type]}001`;
       const name = prompt('請輸入腳本名稱：', defaultName);
       if (name === null || name.trim() === '') {
@@ -691,8 +662,89 @@ function bindUIEvents() {
     e.target.value = '';
   });
 
+  // ===== 分割條拖動邏輯 =====
+  initResizer();
+
   window.addEventListener('resize', () => {
     resizeCanvas();
+  });
+}
+
+// ========== 分割條拖動 ==========
+function initResizer() {
+  const resizer = document.getElementById('resizer-v');
+  const leftColumn = document.querySelector('.drawer-left-column');
+  const panelWrap = document.getElementById('panel-wrap');
+  const drawer = document.getElementById('drawer2d');
+
+  if (!resizer || !leftColumn || !panelWrap || !drawer) return;
+
+  let isDragging = false;
+
+  resizer.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    isDragging = true;
+    resizer.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+
+    const drawerRect = drawer.getBoundingClientRect();
+    const resizerRect = resizer.getBoundingClientRect();
+    const resizerWidth = resizerRect.width;
+
+    const newPanelWidth = drawerRect.right - e.clientX - resizerWidth / 2;
+    const clampedWidth = Math.max(280, Math.min(500, newPanelWidth));
+
+    panelWrap.style.width = clampedWidth + 'px';
+    panelWrap.style.minWidth = clampedWidth + 'px';
+    panelWrap.style.maxWidth = clampedWidth + 'px';
+
+    resizeCanvas();
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      resizer.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      resizeCanvas();
+    }
+  });
+
+  resizer.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    isDragging = true;
+    resizer.classList.add('dragging');
+  }, { passive: false });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    const touch = e.touches[0];
+    const drawerRect = drawer.getBoundingClientRect();
+    const resizerRect = resizer.getBoundingClientRect();
+    const resizerWidth = resizerRect.width;
+
+    const newPanelWidth = drawerRect.right - touch.clientX - resizerWidth / 2;
+    const clampedWidth = Math.max(280, Math.min(500, newPanelWidth));
+
+    panelWrap.style.width = clampedWidth + 'px';
+    panelWrap.style.minWidth = clampedWidth + 'px';
+    panelWrap.style.maxWidth = clampedWidth + 'px';
+
+    resizeCanvas();
+  }, { passive: false });
+
+  document.addEventListener('touchend', () => {
+    if (isDragging) {
+      isDragging = false;
+      resizer.classList.remove('dragging');
+      resizeCanvas();
+    }
   });
 }
 

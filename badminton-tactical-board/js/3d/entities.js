@@ -19,110 +19,105 @@ export let ballTrail = [];
 export function buildCourt() {
   const scene = getScene();
 
-  // ---- 地板 ----
+  // ---- 地板：roughness 1.0、metalness 0 = 無反光 ----
   const courtGeo = new THREE.PlaneGeometry(COURT.width_d, COURT.length);
-  const courtMat = new THREE.MeshStandardMaterial({ color: 0x1b5e20, roughness: 0.4 });
+  const courtMat = new THREE.MeshStandardMaterial({ 
+    color: 0x1b5e20, 
+    roughness: 1.0, 
+    metalness: 0.0
+  });
   const courtFloor = new THREE.Mesh(courtGeo, courtMat);
   courtFloor.rotation.x = -Math.PI / 2;
-  courtFloor.receiveShadow = true;
+  // 不再 receiveShadow
   scene.add(courtFloor);
 
   // ---- 外圍 ----
   const outGeo = new THREE.PlaneGeometry(COURT.width_d + 3, COURT.length + 3);
-  const outMat = new THREE.MeshStandardMaterial({ color: 0x0f2847, roughness: 0.6 });
+  const outMat = new THREE.MeshStandardMaterial({ 
+    color: 0x0f2847, 
+    roughness: 1.0, 
+    metalness: 0.0
+  });
   const outFloor = new THREE.Mesh(outGeo, outMat);
   outFloor.rotation.x = -Math.PI / 2;
   outFloor.position.y = -0.01;
   scene.add(outFloor);
 
-  // ---- 標線（使用 LineSegments） ----
+  // ---- 標線 ----
   const points = [];
   const addLine = (x1, z1, x2, z2) => {
     points.push(new THREE.Vector3(x1, 0.02, z1), new THREE.Vector3(x2, 0.02, z2));
   };
 
-  const hw = COURT.width_d / 2;      // 雙打半寬 3.05m
-  const hws = COURT.width_s / 2;     // 單打半寬 2.59m
-  const hl = COURT.length / 2;       // 半長 6.7m
+  const hw = COURT.width_d / 2;
+  const hws = COURT.width_s / 2;
+  const hl = COURT.length / 2;
 
-  // ========================================
   // 1. 雙打邊線（最外側）
-  // ========================================
-  // 左右邊線
   addLine(-hw, -hl, -hw, hl);
   addLine(hw, -hl, hw, hl);
-  // 上下底線
   addLine(-hw, -hl, hw, -hl);
   addLine(-hw, hl, hw, hl);
 
-  // ========================================
   // 2. 單打邊線（內側）
-  // ========================================
   addLine(-hws, -hl, -hws, hl);
   addLine(hws, -hl, hws, hl);
 
-  // ========================================
-  // 3. 雙打後發球線（距離底線 0.76m）
-  // ========================================
+  // 3. 雙打後發球線
   addLine(-hw, -COURT.double_back, hw, -COURT.double_back);
   addLine(-hw, COURT.double_back, hw, COURT.double_back);
 
-  // ========================================
-  // 4. 單打發球線（服務線，距離球網 1.98m）
-  // ========================================
+  // 4. 單打發球線（延伸至雙打邊線）
   addLine(-hw, -COURT.service_line, hw, -COURT.service_line);
   addLine(-hw, COURT.service_line, hw, COURT.service_line);
 
-  // ========================================
-  // 5. 中線（左右半場分割，只畫到發球線）
-  // ========================================
+  // 5. 中線（只畫到發球線）
   addLine(0, -hl, 0, -COURT.service_line);
   addLine(0, hl, 0, COURT.service_line);
 
-  // ---- 創建標線 ----
   const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
   const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff });
   const lines = new THREE.LineSegments(lineGeo, lineMat);
   scene.add(lines);
 
   // ========================================
-  // 6. 球網
+  // 球網
   // ========================================
-  // 網柱 - 在雙打邊線與球網的交點
   const postGeo = new THREE.CylinderGeometry(0.04, 0.04, COURT.net_height, 16);
-  const postMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8 });
+  const postMat = new THREE.MeshStandardMaterial({ 
+    color: 0xcccccc, 
+    roughness: 1.0, 
+    metalness: 0.0
+  });
 
-  // 左網柱（雙打邊線左側）
   const postL = new THREE.Mesh(postGeo, postMat);
   postL.position.set(-hw, COURT.net_height / 2, 0);
   scene.add(postL);
 
-  // 右網柱（雙打邊線右側）
   const postR = new THREE.Mesh(postGeo, postMat);
   postR.position.set(hw, COURT.net_height / 2, 0);
   scene.add(postR);
 
-  // 網面 - 從左網柱到右網柱
   const netGeo = new THREE.PlaneGeometry(COURT.width_d, 0.8);
   const netMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     transparent: true,
     opacity: 0.4,
-    side: THREE.DoubleSide
+    side: THREE.DoubleSide,
+    roughness: 1.0,
+    metalness: 0.0
   });
   const netMesh = new THREE.Mesh(netGeo, netMat);
   netMesh.position.set(0, COURT.net_height - 0.4, 0);
   scene.add(netMesh);
 
-  // 網頂白帶
   const tapeGeo = new THREE.PlaneGeometry(COURT.width_d, 0.06);
   const tapeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
   const tapeMesh = new THREE.Mesh(tapeGeo, tapeMat);
   tapeMesh.position.set(0, COURT.net_height - 0.03, 0);
   scene.add(tapeMesh);
 
-  // ---- 可選：在單打邊線位置加小標記 ----
-  // 網柱在單打邊線位置的小標記點
+  // 單打邊線與球網交點標記
   const dotGeo = new THREE.SphereGeometry(0.03, 8, 8);
   const dotMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const dotL = new THREE.Mesh(dotGeo, dotMat);
@@ -143,14 +138,19 @@ export function createShuttle() {
   const coneMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     side: THREE.DoubleSide,
-    roughness: 0.3
+    roughness: 1.0,
+    metalness: 0.0
   });
   const cone = new THREE.Mesh(coneGeo, coneMat);
   cone.position.y = 0.06;
   group.add(cone);
 
   const headGeo = new THREE.SphereGeometry(0.04, 12, 12);
-  const headMat = new THREE.MeshStandardMaterial({ color: 0xffd54f, roughness: 0.2 });
+  const headMat = new THREE.MeshStandardMaterial({ 
+    color: 0xffd54f, 
+    roughness: 1.0, 
+    metalness: 0.0
+  });
   const head = new THREE.Mesh(headGeo, headMat);
   head.position.y = 0.01;
   group.add(head);
@@ -182,18 +182,24 @@ export function buildPlayers() {
 
       const bodyGeo = new THREE.CylinderGeometry(0.25, 0.25, 1.2, 16);
       const bodyMat = new THREE.MeshStandardMaterial({
-        color: isTeamA ? 0x2196f3 : 0xff5252
+        color: isTeamA ? 0x2196f3 : 0xff5252,
+        roughness: 1.0,
+        metalness: 0.0
       });
       const body = new THREE.Mesh(bodyGeo, bodyMat);
       body.position.y = 0.6;
-      body.castShadow = true;
+      // 不再 castShadow
       group.add(body);
 
       const headGeo = new THREE.SphereGeometry(0.22, 16, 16);
-      const headMat = new THREE.MeshStandardMaterial({ color: 0xffe0b2 });
+      const headMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffe0b2, 
+        roughness: 1.0, 
+        metalness: 0.0
+      });
       const head = new THREE.Mesh(headGeo, headMat);
       head.position.y = 1.35;
-      head.castShadow = true;
+      // 不再 castShadow
       group.add(head);
 
       playerMeshes[id] = group;
@@ -256,7 +262,9 @@ function update3DTrajectory(shot) {
   const tubeMat = new THREE.MeshStandardMaterial({
     color: 0xffd54f,
     emissive: 0xf57c00,
-    emissiveIntensity: 0.4
+    emissiveIntensity: 0.4,
+    roughness: 1.0,
+    metalness: 0.0
   });
   trajectoryMesh = new THREE.Mesh(tubeGeo, tubeMat);
   scene.add(trajectoryMesh);

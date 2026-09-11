@@ -14,13 +14,24 @@ export function updateShotInfo() {
   }
 }
 
-// ========== 更新 HUD（右上角） ==========
+// ========== 更新 HUD ==========
 export function updateHUD() {
   const state = getState();
   const hud = document.getElementById('hud');
   if (hud) {
     hud.textContent = `📊 共 ${state.shots.length - 1} 拍`;
   }
+}
+
+// ========== 判斷速度顏色 ==========
+function getSpeedColor(currentSpeed, prevSpeed) {
+  if (prevSpeed === undefined || prevSpeed === null) {
+    return '#ffd54f';
+  }
+  const diff = currentSpeed - prevSpeed;
+  if (diff > 0.15) return '#ff5252';
+  if (diff < -0.15) return '#81c784';
+  return '#ffd54f';
 }
 
 // ========== 更新參數面板 ==========
@@ -37,12 +48,10 @@ export function updateParamPanel() {
     return;
   }
 
-  // 腳本模式：顯示參數區
   if (panelWrap) panelWrap.classList.remove('hidden-panel');
 
   if (!content || !shot) return;
 
-  // 先更新側視軌跡（獨立面板）
   renderSideProfile(shot);
 
   // 第 0 拍
@@ -72,7 +81,7 @@ export function updateParamPanel() {
       `;
     });
     content.innerHTML = html;
-    
+
     if (diagContent) {
       diagContent.innerHTML = `<div style="font-size:11px;color:#78909c;">第 0 拍：初始站位調整</div>`;
     }
@@ -82,31 +91,40 @@ export function updateParamPanel() {
   // ===== 第 1 拍以後 =====
   const shots = getShots();
   const diag = checkPhysics(shot, shots, state.mode);
+  const prevShot = state.currentShot > 0 ? shots[state.currentShot - 1] : null;
 
   // ---- 參數區 ----
   let html = '';
 
-  // 球員速度（僅按鈕，無滑桿）
+  // 球員速度
   html += `<div style="font-weight:bold; color:#ffd54f; font-size:11px; margin-bottom:4px;">⚡ 球員速度</div>`;
   const playerEntries = Object.entries(shot.players);
   const cols = playerEntries.length >= 3 ? 2 : 1;
   html += `<div style="display:grid; grid-template-columns: ${cols === 2 ? '1fr 1fr' : '1fr'}; gap:4px; margin-bottom:8px;">`;
+
   playerEntries.forEach(([id, p]) => {
     const isStriker = id.startsWith(shot.striker);
     const teamLabel = id.startsWith('A') ? '藍' : '紅';
     const roleLabel = isStriker ? '⚔️' : '🛡️';
-    let speedColor = '#ffd54f';
+
+    const prevSpeed = prevShot?.players?.[id]?.speed;
+    const speedColor = getSpeedColor(p.speed || 3.0, prevSpeed);
+
+    let finalColor = speedColor;
     const diagSpeedWarns = diag.speedWarns || [];
     const warn = diagSpeedWarns.find(w => w.id === id);
-    if (warn && warn.type === 'need_faster') speedColor = '#ff8a80';
-    else if (warn && warn.type === 'extreme') speedColor = '#ff1744';
+    if (warn && warn.type === 'extreme') {
+      finalColor = '#ff1744';
+    } else if (warn && warn.type === 'need_faster') {
+      finalColor = '#ff8a80';
+    }
 
     html += `
       <div class="param-row" style="margin-bottom:2px;">
         <label style="width:50px;font-size:10px;">${teamLabel}${id} ${roleLabel}</label>
         <div class="slider-container" style="flex:1;max-width:120px;">
           <button class="step-btn" onclick="window.adjustPlayerSpeed('${id}', -0.2)" style="padding:1px 6px;font-size:12px;">−</button>
-          <span class="slider-val" style="color:${speedColor};min-width:32px;font-size:11px;">${(p.speed || 3.0).toFixed(1)}</span>
+          <span class="slider-val" style="color:${finalColor};min-width:32px;font-size:11px;">${(p.speed || 3.0).toFixed(1)}</span>
           <button class="step-btn" onclick="window.adjustPlayerSpeed('${id}', 0.2)" style="padding:1px 6px;font-size:12px;">+</button>
         </div>
       </div>
@@ -159,15 +177,15 @@ export function updateParamPanel() {
     ${!showPressOptions ? '<div style="font-size:10px; color:#78909c; margin-top:-2px; margin-bottom:6px;">💡 快壓/輕壓僅限高位</div>' : ''}
   `;
 
-  // Apex
+  // Apex 控制
   const isPress = shot.arcType === 'fast_press' || shot.arcType === 'soft_press';
   html += `
     <div class="param-row">
       <label>頂點高度：</label>
       <div class="slider-container">
-        <button class="step-btn" onclick="window.adjustApexHeight(-0.2)" ${isPress ? 'disabled' : ''}>−</button>
+        <button class="step-btn" onclick="window.adjustApexHeight(-0.1)" ${isPress ? 'disabled' : ''}>−</button>
         <input type="range" min="1.2" max="8.0" step="0.1" value="${shot.apexHeight.toFixed(1)}" oninput="window.setApexHeight(parseFloat(this.value))" ${isPress ? 'disabled' : ''} style="flex:1;">
-        <button class="step-btn" onclick="window.adjustApexHeight(0.2)" ${isPress ? 'disabled' : ''}>+</button>
+        <button class="step-btn" onclick="window.adjustApexHeight(0.1)" ${isPress ? 'disabled' : ''}>+</button>
         <span class="slider-val" style="min-width:44px;">${shot.apexHeight.toFixed(1)}m ${isPress ? '🔒' : ''}</span>
       </div>
     </div>
@@ -186,14 +204,38 @@ export function updateParamPanel() {
 
   // ===== 物理診斷區 =====
   if (diagContent) {
-    let diagHtml = `<div class="physics-diag ${diag.type}" style="margin-bottom:0;">${diag.msg}</div>`;
-    
+    let diagHtml = '';
+
+    diagHtml += `<div class="physics-diag ${diag.type}" style="margin-bottom:6px;">${diag.msg}</div>`;
+
+    if (diag.stats) {
+      const s = diag.stats;
+      diagHtml += `<div style="font-size:11px; background:rgba(0,0,0,0.2); border-radius:4px; padding:6px 8px; margin-bottom:6px;">`;
+      diagHtml += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">`;
+      diagHtml += `<div>🎯 初速：<strong style="color:#ffd54f;">${s.initialSpeed}</strong> km/h</div>`;
+      diagHtml += `<div>📊 均速：<strong style="color:#ffd54f;">${s.averageSpeed}</strong> km/h</div>`;
+      diagHtml += `<div>📏 距離：<strong style="color:#90caf9;">${s.flightDistance.toFixed(1)}</strong> m</div>`;
+      diagHtml += `<div>⏱ 時間：<strong style="color:#90caf9;">${s.flightTime.toFixed(2)}</strong> s</div>`;
+      diagHtml += `</div>`;
+
+      if (s.netClearance < 50) {
+        const netColor = s.netClearance >= 1.55 ? '#81c784' : '#ff8a65';
+        diagHtml += `<div style="margin-top:4px;">🌐 過網：<strong style="color:${netColor};">${s.netClearance.toFixed(2)}</strong> m</div>`;
+      }
+
+      if (shot.interception) {
+        diagHtml += `<div style="margin-top:4px; color:#ff1744;">⚡ 攔截於：<strong>${shot.interception.height.toFixed(2)}</strong> m（球員 ${shot.interception.playerId}）</div>`;
+      }
+      diagHtml += `</div>`;
+    }
+
     if (diag.speedWarns && diag.speedWarns.length > 0) {
       diag.speedWarns.forEach(warn => {
         const warnColor = warn.type === 'extreme' ? '#ff1744' : '#ff8a80';
         diagHtml += `<div style="font-size:10px;color:${warnColor};padding:2px 4px;">${warn.msg}</div>`;
       });
     }
+
     diagContent.innerHTML = diagHtml;
   }
 }

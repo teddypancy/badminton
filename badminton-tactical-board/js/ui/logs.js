@@ -17,7 +17,6 @@ export function updateLog() {
   const currentScript = scriptLib.find(s => s.id === getCurrentScriptId());
   const typeLabel = currentScript ? getScriptTypeLabel(currentScript.type || state.mode) : '';
 
-  // 更新標題
   if (title) {
     title.textContent = `📋 ${currentName} (${typeLabel})`;
   }
@@ -47,7 +46,7 @@ export function updateLog() {
       const strikerLabel = s.striker === 'A' ? '🔵藍隊' : '🔴紅隊';
       const hitLevelLabel = s.hitLevel === 'high' ? '高位' : s.hitLevel === 'mid' ? '中位' : '低位';
       const duration = getShotDuration(s);
-      
+
       // 物理診斷
       const diag = checkPhysics(s, shots, state.mode);
       const diagIcon = diag.type === 'ok' ? '✅' : '⚠️';
@@ -60,13 +59,31 @@ export function updateLog() {
         </div>
         <div style="font-size:10px;color:#90caf9;margin-top:2px;">
           高度: ${hitLevelLabel} · 起點(${s.ballFrom.x.toFixed(1)}, ${s.ballFrom.z.toFixed(1)}) → 落點(${s.ballTo.x.toFixed(1)}, ${s.ballTo.z.toFixed(1)})
-        </div>
-        <div style="font-size:10px;color:${diagColor};margin-top:2px;">
-          ${diagIcon} ${diag.msg}
-        </div>
-      </div>`;
+        </div>`;
 
-      // 智能匹配結果
+      // 結構化數據
+      if (diag.stats) {
+        const st = diag.stats;
+        html += `<div style="font-size:10px;color:#90caf9;margin-top:2px;display:grid;grid-template-columns:1fr 1fr;gap:2px;">
+          <span>🎯 初速 ${st.initialSpeed} km/h</span>
+          <span>📊 均速 ${st.averageSpeed} km/h</span>
+          <span>📏 距離 ${st.flightDistance.toFixed(1)} m</span>
+          <span>⏱ 時間 ${st.flightTime.toFixed(2)} s</span>
+        </div>`;
+      }
+
+      // 攔截
+      if (s.interception) {
+        html += `<div style="font-size:10px;color:#ff1744;margin-top:2px;">⚡ 攔截於 ${s.interception.height.toFixed(2)} m</div>`;
+      }
+
+      // 診斷
+      html += `<div style="font-size:10px;color:${diagColor};margin-top:2px;">
+        ${diagIcon} ${diag.msg}
+      </div>
+    </div>`;
+
+      // 速度警告
       if (diag.speedWarns && diag.speedWarns.length > 0) {
         diag.speedWarns.forEach(warn => {
           const warnColor = warn.type === 'extreme' ? '#ff1744' : '#ff8a80';
@@ -76,20 +93,10 @@ export function updateLog() {
           </div>`;
         });
       }
-
-      // 攔截點資訊
-      const intercepts = getInterceptionInfo(s, state.mode);
-      if (intercepts.length > 0) {
-        intercepts.forEach(ic => {
-          html += `<div style="font-size:10px;color:#ffe082;padding:2px 10px 2px 30px;background:rgba(255,152,0,0.1);border-radius:3px;margin-bottom:2px;">
-            ⚡ 攔截點：球員 ${ic.playerId} 可在 ${ic.flightTime.toFixed(2)}s 時於高度 ${ic.height.toFixed(2)}m 處攔截
-          </div>`;
-        });
-      }
     }
   });
 
-  // 診斷紀錄匯總
+  // 診斷匯總
   const diagSummary = shots.slice(1).map((s, idx) => {
     const diag = checkPhysics(s, shots, state.mode);
     return { idx: idx + 1, type: diag.type, msg: diag.msg };
@@ -99,7 +106,7 @@ export function updateLog() {
   if (warnCount > 0) {
     html += `<div style="padding:8px 10px; background:rgba(230,74,25,0.15); border-radius:4px; margin-top:8px; border:1px solid #e64a19;">
       <div style="font-weight:bold;color:#ff8a65;font-size:11px;">⚠️ 診斷匯總：${warnCount} 個物理警告</div>
-      ${diagSummary.filter(d => d.type === 'warn').map(d => 
+      ${diagSummary.filter(d => d.type === 'warn').map(d =>
         `<div style="font-size:10px;color:#ff8a65;padding:2px 0;">第 ${d.idx} 拍：${d.msg}</div>`
       ).join('')}
     </div>`;

@@ -22,6 +22,10 @@ let pointerStartY = 0;
 let longPressTimer = null;
 let isLongPress = false;
 
+// 吸附範圍（帶緩衝區）
+const SNAP_ENTER = 0.3;
+const SNAP_EXIT = 0.4;
+
 function getCanvasMousePos(e) {
   const canvas = document.getElementById('court2d');
   const rect = canvas.getBoundingClientRect();
@@ -41,25 +45,30 @@ function getHitTarget(mPx) {
   const hits = [];
 
   if (!shot.isSetup && !shot.pendingTo) {
+    const isFirstShot = state.currentShot === 1;
+    if (isFirstShot) {
+      const fromPx = m2px(shot.ballFrom.x, shot.ballFrom.z);
+      const dFrom = Math.hypot(mPx.x - fromPx.x, mPx.y - fromPx.y);
+      if (dFrom <= 20) {
+        hits.push({ type: 'ball', point: 'from', dist: dFrom, label: '🏸 擊球點' });
+      }
+    }
+
     const toPx = m2px(shot.ballTo.x, shot.ballTo.z);
     const dTo = Math.hypot(mPx.x - toPx.x, mPx.y - toPx.y);
     if (dTo <= 22) {
       hits.push({ type: 'ball', point: 'to', dist: dTo, label: '🎯 落點' });
     }
-
-    const fromPx = m2px(shot.ballFrom.x, shot.ballFrom.z);
-    const dFrom = Math.hypot(mPx.x - fromPx.x, mPx.y - fromPx.y);
-    if (dFrom <= 22) {
-      hits.push({ type: 'ball', point: 'from', dist: dFrom, label: '🏸 擊球點' });
-    }
   }
 
-  for (const [id, pos] of Object.entries(shot.players)) {
-    const pPx = m2px(pos.x, pos.z);
-    const dP = Math.hypot(mPx.x - pPx.x, mPx.y - pPx.y);
-    if (dP <= 22) {
-      hits.push({ type: 'player', id: id, dist: dP, label: `球員 ${id}` });
-    }
+  if (!shot.isSetup && !shot.pendingTo && shot.previewPositions) {
+    Object.entries(shot.previewPositions).forEach(([id, pos]) => {
+      const pPx = m2px(pos.x, pos.z);
+      const dP = Math.hypot(mPx.x - pPx.x, mPx.y - pPx.y);
+      if (dP <= 20) {
+        hits.push({ type: 'preview', id: id, dist: dP, label: `預覽球員 ${id}` });
+      }
+    });
   }
 
   hits.sort((a, b) => a.dist - b.dist);
@@ -89,9 +98,8 @@ function handlePointerDown(e) {
   // ---- 手繪模式 ----
   if (state.appMode === 'free') {
     const tool = state.freeDraw.tool;
-    
+
     if (tool === 'pencil') {
-      // 畫筆：繪製軌跡
       const mPos = px2m(mPx.x, mPx.y);
       state.freeDraw.currentPath = {
         color: state.freeDraw.color,
@@ -100,26 +108,22 @@ function handlePointerDown(e) {
       };
       isDragging = true;
     } else if (tool === 'select') {
-      // 選取：可拖動球員
       const hits = getHitTarget(mPx);
-      const playerHit = hits.find(h => h.type === 'player');
-      if (playerHit) {
-        selectAndStartDrag(playerHit);
+      if (hits.length > 0) {
+        selectAndStartDrag(hits[0]);
       } else {
         state.selected = null;
         render2D();
+        updateParamPanel();
       }
     } else if (tool === 'eraser') {
-      // 橡皮擦：刪除點擊位置的畫筆軌跡
       const mPos = px2m(mPx.x, mPx.y);
       const paths = state.freeDraw.paths;
-      const eraseRadius = 0.3; // 擦除半徑（公尺）
-      
+      const eraseRadius = 0.3;
       let erased = false;
       for (let i = paths.length - 1; i >= 0; i--) {
         const path = paths[i];
         if (!path.points || path.points.length === 0) continue;
-        // 檢查路徑上是否有點在擦除範圍內
         const shouldErase = path.points.some(p => {
           const dist = Math.hypot(p.x - mPos.x, p.z - mPos.z);
           return dist < eraseRadius;
@@ -137,7 +141,6 @@ function handlePointerDown(e) {
   // ---- 腳本模式 ----
   if (!shot) return;
 
-  // ---- 等待落點設定（單擊直接確定） ----
   if (shot.pendingTo) {
     const mPos = px2m(mPx.x, mPx.y);
     const clampedX = Math.max(-COURT.width_d / 2, Math.min(COURT.width_d / 2, mPos.x));
@@ -156,7 +159,6 @@ function handlePointerDown(e) {
     return;
   }
 
-  // ---- 右鍵 或 長按（移動端）彈出重疊選擇 ----
   if (isRightClick) {
     const hits = getHitTarget(mPx);
     if (hits.length > 1) {
@@ -173,7 +175,6 @@ function handlePointerDown(e) {
     return;
   }
 
-  // ---- 移動端長按檢測 ----
   if (e.touches) {
     longPressTimer = setTimeout(() => {
       isLongPress = true;
@@ -193,7 +194,6 @@ function handlePointerDown(e) {
     }, 600);
   }
 
-  // ---- 單擊選中 ----
   const hits = getHitTarget(mPx);
   if (hits.length > 0) {
     selectAndStartDrag(hits[0]);
@@ -214,70 +214,142 @@ function handlePointerMove(e) {
   const state = getState();
   const mPx = getCanvasMousePos(e);
   const mPos = px2m(mPx.x, mPx.y);
+  const shot = getCurrentShot();
 
-  // ---- 手繪模式 ----
   if (state.appMode === 'free') {
     if (state.freeDraw.currentPath) {
       state.freeDraw.currentPath.points.push({ x: mPos.x, z: mPos.z });
       render2D();
+      return;
     }
     return;
   }
 
-  if (!state.selected) return;
-
-  const shot = getCurrentShot();
-  if (!shot) return;
+  if (!state.selected || !shot) return;
 
   const clampedX = Math.max(-COURT.width_d / 2 - 0.5, Math.min(COURT.width_d / 2 + 0.5, mPos.x));
   const clampedZ = Math.max(-COURT.length / 2 - 0.5, Math.min(COURT.length / 2 + 0.5, mPos.z));
 
-  if (state.selected.type === 'player') {
-    let snapTarget = null;
-    const intercepts = getInterceptionInfo(shot, state.mode);
+  // ========================================
+  // 拖動半透明預覽球員
+  // ========================================
+  if (state.selected.type === 'preview') {
+    const id = state.selected.id;
+    if (!shot.previewPositions) shot.previewPositions = {};
+    if (!shot.previewPositions[id]) shot.previewPositions[id] = { x: 0, z: 0 };
 
-    // 吸附範圍 0.2m
-    if (state.snapEnabled && intercepts.length > 0) {
-      for (const ic of intercepts) {
-        if (ic.playerId === state.selected.id) {
+    let finalX = clampedX;
+    let finalZ = clampedZ;
+    let snapType = null;
+    let snapData = null;
+
+    // ---- 吸附判斷（帶緩衝區）----
+    const wasSnapped = state.snappedPlayer === id && state.snappedType;
+    const currentSnapRange = wasSnapped ? SNAP_EXIT : SNAP_ENTER;
+
+    if (state.snapEnabled) {
+      // 1. 優先吸附攔截點
+      const intercepts = getInterceptionInfo(shot, state.mode);
+      if (intercepts && intercepts.length > 0) {
+        for (const ic of intercepts) {
           const dSnap = Math.hypot(clampedX - ic.snapX, clampedZ - ic.snapZ);
-          if (dSnap < 0.2) {
-            snapTarget = { x: ic.snapX, z: ic.snapZ, type: 'intercept' };
+          if (dSnap < currentSnapRange) {
+            finalX = ic.snapX;
+            finalZ = ic.snapZ;
+            snapType = 'intercept';
+            snapData = ic;
             break;
           }
         }
       }
-    }
 
-    if (!snapTarget && state.snapEnabled && !shot.isSetup) {
-      const dTo = Math.hypot(clampedX - shot.ballTo.x, clampedZ - shot.ballTo.z);
-      if (dTo < 0.2) {
-        snapTarget = { x: shot.ballTo.x, z: shot.ballTo.z, type: 'ballTo' };
+      // 2. 次要吸附球軌跡終點
+      if (!snapType) {
+        const dTo = Math.hypot(clampedX - shot.ballTo.x, clampedZ - shot.ballTo.z);
+        if (dTo < currentSnapRange) {
+          finalX = shot.ballTo.x;
+          finalZ = shot.ballTo.z;
+          snapType = 'ballTo';
+        }
       }
     }
 
-    if (snapTarget) {
-      shot.players[state.selected.id].x = snapTarget.x;
-      shot.players[state.selected.id].z = snapTarget.z;
-      state.snappedPlayer = state.selected.id;
-      state.snappedType = snapTarget.type;
+    shot.previewPositions[id].x = finalX;
+    shot.previewPositions[id].z = finalZ;
+
+    // ========================================
+    // 吸附到攔截點時，設定 interception 並自動調整接球方速度
+    // ========================================
+    const defender = shot.striker === 'A' ? 'B' : 'A';
+    const isDefender = id.startsWith(defender);
+
+    if (snapType === 'intercept' && snapData && isDefender) {
+      shot.interception = {
+        pt: { x: snapData.snapX, y: snapData.height, z: snapData.snapZ },
+        playerId: snapData.playerId,
+        height: snapData.height,
+        flightTime: snapData.flightTime,
+        t: snapData.t
+      };
+
+      // 自動調整接球方速度為「剛好到達攔截點」
+      // 移動距離 = 從當前位置到攔截點的距離
+      const defenderPos = shot.players[id];
+      if (defenderPos) {
+        const moveDist = Math.hypot(
+          snapData.snapX - defenderPos.x,
+          snapData.snapZ - defenderPos.z
+        );
+        // 所需速度 = 移動距離 / 飛行時間
+        const reqSpeed = moveDist / Math.max(0.1, snapData.flightTime);
+        // 限制在 1.0 ~ 8.0 範圍
+        const finalSpeed = Math.max(1.0, Math.min(8.0, reqSpeed));
+        shot.players[id].speed = parseFloat(finalSpeed.toFixed(1));
+      }
     } else {
-      shot.players[state.selected.id].x = clampedX;
-      shot.players[state.selected.id].z = clampedZ;
-      state.snappedPlayer = null;
-      state.snappedType = null;
+      shot.interception = null;
     }
-  } else if (state.selected.type === 'ball') {
-    if (state.selected.point === 'from') {
-      shot.ballFrom.x = clampedX;
-      shot.ballFrom.z = clampedZ;
-    } else if (state.selected.point === 'to') {
-      shot.ballTo.x = clampedX;
-      shot.ballTo.z = clampedZ;
-      if (state.appMode === 'smart') {
-        const shots = getShots();
-        applySmartPositions(shot, shots, state.mode, state.appMode);
-      }
+
+    state.snappedPlayer = snapType ? id : null;
+    state.snappedType = snapType;
+
+    const shots = getShots();
+    cascadeBallPositions(getCurrentIndex(), shots, state.mode, state.appMode);
+
+    render2D();
+    sync3DPositions();
+    renderSideProfile(shot);
+    updateParamPanel();
+    return;
+  }
+
+  // 拖動球軌跡起點
+  if (state.selected.type === 'ball' && state.selected.point === 'from') {
+    shot.ballFrom.x = clampedX;
+    shot.ballFrom.z = clampedZ;
+  }
+  // 拖動球軌跡終點
+  else if (state.selected.type === 'ball' && state.selected.point === 'to') {
+    shot.ballTo.x = clampedX;
+    shot.ballTo.z = clampedZ;
+
+    if (shot.interception) {
+      shot.interception = null;
+    }
+
+    const defender = shot.striker === 'A' ? 'B' : 'A';
+    if (shot.previewPositions) {
+      const defenderIds = getPlayers(state.mode)[defender] || [];
+      defenderIds.forEach((did, idx) => {
+        if (idx === 0) {
+          shot.previewPositions[did] = { x: clampedX, z: clampedZ };
+        }
+      });
+    }
+
+    if (state.appMode === 'smart') {
+      const shots = getShots();
+      applySmartPositions(shot, shots, state.mode, state.appMode);
     }
   }
 

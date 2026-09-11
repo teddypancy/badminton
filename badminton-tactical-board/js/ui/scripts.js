@@ -4,6 +4,10 @@ import { deepClone } from '../utils/helpers.js';
 import { showToast } from '../utils/toast.js';
 import { getShotDuration, getTotalRallyDuration } from '../core/physics.js';
 
+// ========== 常數 ==========
+const STORAGE_KEY = 'btb_script_library_v0.2';
+const CURRENT_KEY = 'btb_current_script_id_v0.2';
+
 // ========== 腳本資料結構 ==========
 // {
 //   id: string,
@@ -21,9 +25,53 @@ import { getShotDuration, getTotalRallyDuration } from '../core/physics.js';
 let scriptLibrary = [];
 let currentScriptId = null;
 
-// 默認腳本
+// ========== localStorage 操作 ==========
+
+/**
+ * 儲存腳本庫到 localStorage
+ */
+function saveToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(scriptLibrary));
+    if (currentScriptId) {
+      localStorage.setItem(CURRENT_KEY, currentScriptId);
+    }
+  } catch (err) {
+    console.warn('localStorage 儲存失敗：', err);
+  }
+}
+
+/**
+ * 從 localStorage 載入腳本庫
+ */
+function loadFromStorage() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        scriptLibrary = parsed;
+        const storedCurrentId = localStorage.getItem(CURRENT_KEY);
+        if (storedCurrentId && scriptLibrary.find(s => s.id === storedCurrentId)) {
+          currentScriptId = storedCurrentId;
+        } else {
+          currentScriptId = scriptLibrary[0].id;
+        }
+        return true;
+      }
+    }
+  } catch (err) {
+    console.warn('localStorage 載入失敗：', err);
+  }
+  return false;
+}
+
+// ========== 腳本庫初始化 ==========
+
+/**
+ * 建立預設腳本
+ */
 function createDefaultScript() {
-  const state = getState();
   return {
     id: 'script_' + Date.now(),
     name: '[單打]001',
@@ -38,23 +86,79 @@ function createDefaultScript() {
   };
 }
 
-// 初始化腳本庫
+/**
+ * 初始化腳本庫
+ * 優先從 localStorage 載入；若無，建立預設
+ */
 function initScriptLibrary() {
   if (scriptLibrary.length === 0) {
-    const defaultScript = createDefaultScript();
-    scriptLibrary.push(defaultScript);
-    currentScriptId = defaultScript.id;
+    const loaded = loadFromStorage();
+    if (!loaded) {
+      const defaultScript = createDefaultScript();
+      scriptLibrary.push(defaultScript);
+      currentScriptId = defaultScript.id;
+      saveToStorage();
+    }
   }
 }
 
-export function getScriptLibrary() { 
-  initScriptLibrary();
-  return scriptLibrary; 
+// ========== 舊腳本遷移 ==========
+
+/**
+ * 修復舊腳本：補上新欄位
+ */
+function migrateShot(shot) {
+  if (!shot) return shot;
+
+  // 第 0 拍
+  if (shot.isSetup) {
+    if (shot.previewPositions === undefined) {
+      shot.previewPositions = null;
+    }
+    if (shot.interception === undefined) {
+      shot.interception = null;
+    }
+    return shot;
+  }
+
+  // 第 1 拍以後
+  if (shot.interception === undefined) {
+    shot.interception = null;
+  }
+
+  // previewPositions：若無，從 players 生成
+  if (!shot.previewPositions && shot.players) {
+    shot.previewPositions = {};
+    const striker = shot.striker;
+    const defender = striker === 'A' ? 'B' : 'A';
+    const strikerSide = striker === 'A' ? 1 : -1;
+    const defenderSide = defender === 'A' ? 1 : -1;
+
+    Object.keys(shot.players).forEach(id => {
+      if (id.startsWith(striker)) {
+        shot.previewPositions[id] = { x: 0, z: strikerSide * 3.35 };
+      } else {
+        shot.previewPositions[id] = {
+          x: shot.ballTo?.x || 0,
+          z: shot.ballTo?.z || defenderSide * 3.35
+        };
+      }
+    });
+  }
+
+  return shot;
 }
 
-export function getCurrentScriptId() { 
+// ========== 公開 API ==========
+
+export function getScriptLibrary() {
   initScriptLibrary();
-  return currentScriptId; 
+  return scriptLibrary;
+}
+
+export function getCurrentScriptId() {
+  initScriptLibrary();
+  return currentScriptId;
 }
 
 export function getCurrentScriptName() {
@@ -81,6 +185,7 @@ export function syncCurrentToLibrary() {
       modifiedAt: new Date().toISOString()
     };
     script.type = state.mode;
+    saveToStorage();
   }
 }
 
@@ -93,9 +198,16 @@ export function loadScriptFromLibrary(id) {
   const state = getState();
   state.mode = script.data.mode || script.type || 'singles';
   state.appMode = script.data.appMode || 'smart';
-  state.shots = deepClone(script.data.shots);
+
+  // 複製 shots，並修復舊腳本
+  const loadedShots = deepClone(script.data.shots || []);
+  state.shots = loadedShots.map(migrateShot);
+
   state.history = [];
   state.redoHistory = [];
+
+  // 儲存當前腳本 ID
+  saveToStorage();
 
   if (window.setCurrentShot) window.setCurrentShot(0);
   if (window.updateHUD) window.updateHUD();
@@ -122,6 +234,7 @@ export function addScript(type, name) {
   });
   currentScriptId = newId;
   updateScriptsList();
+  saveToStorage();
   return newId;
 }
 
@@ -138,6 +251,7 @@ export function deleteScript(id) {
     loadScriptFromLibrary(scriptLibrary[0].id);
   } else {
     updateScriptsList();
+    saveToStorage();
   }
   return true;
 }
@@ -149,6 +263,7 @@ export function editScriptName(id, newName) {
   if (newName && newName.trim() !== '') {
     script.name = newName.trim();
     updateScriptsList();
+    saveToStorage();
     if (window.updateLogButton) window.updateLogButton();
     return true;
   }
@@ -169,7 +284,7 @@ export function updateScriptsList() {
     const totalShots = shots.length > 0 ? shots.length - 1 : 0;
     const modifiedDate = s.data?.modifiedAt ? s.data.modifiedAt.slice(0, 10) : dateStr;
     const typeLabel = getScriptTypeLabel(s.type || s.data?.mode || 'singles');
-    
+
     return `
     <div class="script-item ${isCurrent ? 'current' : ''}" onclick="window.loadScriptFromLibrary('${s.id}')">
       <div class="info">
@@ -184,11 +299,22 @@ export function updateScriptsList() {
   `}).join('');
 }
 
-// 導出/導入 (JSON)
+// ========== 導入/導出 ==========
+
+/**
+ * 導出所有腳本
+ */
 export function exportAllScripts() {
   initScriptLibrary();
   syncCurrentToLibrary();
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(scriptLibrary, null, 2));
+
+  const exportData = {
+    version: '0.2A',
+    exportedAt: new Date().toISOString(),
+    scripts: scriptLibrary
+  };
+
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
   const downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute("href", dataStr);
   downloadAnchor.setAttribute("download", `badminton_tactics_${Date.now()}.json`);
@@ -197,28 +323,95 @@ export function exportAllScripts() {
   downloadAnchor.remove();
 }
 
+/**
+ * 匯入腳本
+ * 支援兩種格式：
+ * 1. 新格式：{ version, exportedAt, scripts: [...] }
+ * 2. 舊格式：直接是陣列 [...]
+ */
 export function importScripts(jsonData) {
   initScriptLibrary();
   try {
-    const imported = JSON.parse(jsonData);
-    if (Array.isArray(imported) && imported.length > 0) {
-      const valid = imported.every(s => s.id && s.name && s.type && s.data);
-      if (!valid) {
-        alert('JSON 格式不符：缺少必要欄位 (id, name, type, data)');
-        return false;
-      }
-      scriptLibrary = imported;
-      loadScriptFromLibrary(scriptLibrary[0].id);
-      if (window.updateLogButton) window.updateLogButton();
-      showToast('腳本庫導入成功！');
-      return true;
+    const parsed = JSON.parse(jsonData);
+
+    // 判斷格式
+    let importedScripts;
+    if (Array.isArray(parsed)) {
+      // 舊格式：直接是陣列
+      importedScripts = parsed;
+    } else if (parsed && Array.isArray(parsed.scripts)) {
+      // 新格式
+      importedScripts = parsed.scripts;
+    } else {
+      alert('JSON 格式不符：需要腳本陣列或 { scripts: [...] }');
+      return false;
     }
-    alert('JSON 格式不符：需要陣列');
-    return false;
+
+    // 驗證每個腳本
+    const valid = importedScripts.every(s => s.id && s.name && s.type && s.data);
+    if (!valid) {
+      alert('JSON 格式不符：缺少必要欄位 (id, name, type, data)');
+      return false;
+    }
+
+    // 修復舊腳本
+    importedScripts.forEach(s => {
+      if (s.data && Array.isArray(s.data.shots)) {
+        s.data.shots = s.data.shots.map(migrateShot);
+      }
+    });
+
+    // 合併策略：詢問使用者
+    const hasExisting = scriptLibrary.length > 0;
+    let mergeMode = 'replace'; // 預設取代
+
+    if (hasExisting) {
+      const answer = confirm(
+        `目前已有 ${scriptLibrary.length} 個腳本。\n\n` +
+        `點「確定」= 合併（保留現有 + 新增導入）\n` +
+        `點「取消」= 取代（清空現有，只保留導入）`
+      );
+      mergeMode = answer ? 'merge' : 'replace';
+    }
+
+    if (mergeMode === 'replace') {
+      scriptLibrary = importedScripts;
+    } else {
+      // 合併：避免 ID 衝突
+      importedScripts.forEach(s => {
+        if (scriptLibrary.find(existing => existing.id === s.id)) {
+          s.id = 'script_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+        }
+        scriptLibrary.push(s);
+      });
+    }
+
+    currentScriptId = scriptLibrary[0].id;
+    saveToStorage();
+    loadScriptFromLibrary(currentScriptId);
+    if (window.updateLogButton) window.updateLogButton();
+    showToast(`導入成功（${mergeMode === 'merge' ? '合併' : '取代'}）：${importedScripts.length} 個腳本`);
+    return true;
+
   } catch (err) {
+    console.error('導入失敗：', err);
     alert('無效的 JSON 檔案');
     return false;
   }
+}
+
+/**
+ * 清空 localStorage（用於測試或重置）
+ */
+export function clearStorage() {
+  if (!confirm('確定清空所有本地儲存的腳本？此操作無法撤銷。')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(CURRENT_KEY);
+  scriptLibrary = [];
+  currentScriptId = null;
+  initScriptLibrary();
+  loadScriptFromLibrary(currentScriptId);
+  showToast('已清空本地儲存');
 }
 
 // 初始化

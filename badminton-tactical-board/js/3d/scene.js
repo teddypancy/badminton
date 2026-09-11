@@ -11,7 +11,7 @@ export function initScene() {
     return null;
   }
 
-  // 檢查是否已初始化
+  // 已初始化則跳過
   if (renderer) {
     console.log('3D場景已存在，跳過初始化');
     return { scene, camera, renderer, controls };
@@ -32,8 +32,7 @@ export function initScene() {
   });
   renderer.setSize(width, height);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // 陰影已停用（不啟用 shadowMap）
   container.appendChild(renderer.domElement);
 
   controls = new OrbitControls(camera, renderer.domElement);
@@ -42,20 +41,21 @@ export function initScene() {
   controls.dampingFactor = 0.05;
   controls.update();
 
-  // 光照
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  // ========================================
+  // 光照：保留立體感，但無陰影、無反光
+  // ========================================
+  
+  // 1. 環境光：提供基本亮度
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
   scene.add(ambientLight);
 
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  // 2. 方向光：提供立體感（明暗漸變），但不投影、不強烈
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.35);
   dirLight.position.set(10, 20, 10);
-  dirLight.castShadow = true;
-  dirLight.shadow.mapSize.width = 2048;
-  dirLight.shadow.mapSize.height = 2048;
+  dirLight.castShadow = false;   // 不投影
   scene.add(dirLight);
 
-  const fillLight = new THREE.DirectionalLight(0x4488ff, 0.3);
-  fillLight.position.set(-10, 5, -10);
-  scene.add(fillLight);
+  // 3. 移除原本的 fillLight（藍色補光，會造成反光）
 
   // Resize handler
   window.addEventListener('resize', () => {

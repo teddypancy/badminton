@@ -60,8 +60,9 @@
 
 <!-- ===== 2D 戰術板抽屜 ===== -->
 <div id="drawer2d">
-  <div id="drawer-header">
-    <div class="drawer-left">
+  <!-- 左側：標題列 + 球場 -->
+  <div class="drawer-left-column">
+    <div id="drawer-header">
       <div class="mode-toggle">
         <button class="mode-btn active" data-appmode="smart">📋 腳本</button>
         <button class="mode-btn" data-appmode="free">✏️ 手繪</button>
@@ -75,23 +76,20 @@
         <button class="btn btn-danger btn-sm" id="btn-del">✕ 刪除</button>
         <button class="btn btn-primary btn-sm" id="btn-save">💾 保存</button>
       </div>
-    </div>
-    <div class="drawer-right">
-      <div id="free-draw-toolbar">
-        <button class="btn tool-btn" data-tool="select">👆</button>
-        <button class="btn tool-btn active" data-tool="pencil">✏️</button>
-        <div class="divider-sm"></div>
-        <div id="color-picker-list"></div>
-        <div class="divider-sm"></div>
-        <button class="btn tool-btn" data-tool="eraser">🧹</button>
-        <button class="btn tool-btn" id="btn-undo-draw">↩</button>
-        <button class="btn btn-danger btn-sm" id="btn-clear-draw">清空</button>
+      <div class="right-tools">
+        <div id="free-draw-toolbar">
+          <button class="btn tool-btn" data-tool="select">👆</button>
+          <button class="btn tool-btn active" data-tool="pencil">✏️</button>
+          <div class="divider-sm"></div>
+          <div id="color-picker-list"></div>
+          <div class="divider-sm"></div>
+          <button class="btn tool-btn" data-tool="eraser">🧹</button>
+          <button class="btn tool-btn" id="btn-undo-draw">↩</button>
+          <button class="btn btn-danger btn-sm" id="btn-clear-draw">清空</button>
+        </div>
       </div>
-      <button class="btn btn-close" id="btn-close-drawer">✕</button>
     </div>
-  </div>
 
-  <div id="drawer-body">
     <div id="court-wrap">
       <canvas id="court2d"></canvas>
       <div id="mini-selector-popup">
@@ -99,19 +97,23 @@
         <div id="mini-popup-options"></div>
       </div>
     </div>
-    <div id="resizer-v"></div>
-    <div id="panel-wrap">
-      <div class="panel-section" id="side-arc-section">
-        <h4>📐 側視軌跡</h4>
-        <canvas id="sideArcCanvas"></canvas>
-      </div>
-      <div class="panel-section" id="param-section">
-        <div id="param-content"><div class="loading-text">載入中...</div></div>
-      </div>
-      <div class="panel-section" id="diagnostic-section">
-        <h4>⚡ 物理診斷</h4>
-        <div id="diagnostic-content"><div class="loading-text">載入中...</div></div>
-      </div>
+  </div>
+
+  <!-- 分割條 -->
+  <div id="resizer-v"></div>
+
+  <!-- 右側：參數區 -->
+  <div id="panel-wrap">
+    <div class="panel-section" id="side-arc-section">
+      <h4>📐 側視軌跡</h4>
+      <canvas id="sideArcCanvas"></canvas>
+    </div>
+    <div class="panel-section" id="param-section">
+      <div id="param-content"><div class="loading-text">載入中...</div></div>
+    </div>
+    <div class="panel-section" id="diagnostic-section">
+      <h4>⚡ 物理診斷</h4>
+      <div id="diagnostic-content"><div class="loading-text">載入中...</div></div>
     </div>
   </div>
 </div>
