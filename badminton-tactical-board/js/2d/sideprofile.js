@@ -40,7 +40,14 @@ export function renderSideProfile(shot) {
 
   const marginX = 25;
   const groundY = h - 18;
-  const maxHVal = Math.max(6.5, (shot.apexHeight || 4.0) + 0.8);
+  // v0.2b：動態縱軸——依頂點與關鍵點（起/終/攔截）最高值縮放，讓高中低位視覺差異明顯
+  const topY = Math.max(
+    shot.apexHeight || 0,
+    shot.ballFrom ? shot.ballFrom.y : 0,
+    shot.ballTo ? shot.ballTo.y : 0,
+    (shot.hitPoint && shot.hitPoint.y) || 0
+  );
+  const maxHVal = Math.min(8.0, Math.max(2.5, topY + 0.8));
 
   function z2px(z) { return marginX + ((7.0 - z) / 14.0) * (w - 2 * marginX); }
   function y2py(y) { return groundY - (y / maxHVal) * (groundY - 12); }
@@ -84,6 +91,26 @@ export function renderSideProfile(shot) {
   sideCtx.stroke();
   sideCtx.fillStyle = '#ff5252';
   sideCtx.fillRect(netX - 2, netTopY, 4, 3);
+
+  // v0.2b：帶位虛線（高位帶下緣 2.0m／中位帶下緣 1.4m）
+  [[2.0, '#b39ddb'], [1.4, '#80cbc4']].forEach(([bandY, color]) => {
+    const lineY = y2py(bandY);
+    if (lineY <= 12 || lineY >= groundY) return;
+    sideCtx.save();
+    sideCtx.strokeStyle = color;
+    sideCtx.globalAlpha = 0.45;
+    sideCtx.lineWidth = 1;
+    sideCtx.setLineDash([4, 4]);
+    sideCtx.beginPath();
+    sideCtx.moveTo(z2px(6.7), lineY);
+    sideCtx.lineTo(z2px(-6.7), lineY);
+    sideCtx.stroke();
+    sideCtx.restore();
+    sideCtx.fillStyle = color;
+    sideCtx.font = '8px sans-serif';
+    sideCtx.textAlign = 'right';
+    sideCtx.fillText(bandY.toFixed(1) + 'm', z2px(-6.7) - 2, lineY - 2);
+  });
 
   // 軌跡
   sideCtx.strokeStyle = '#ffd54f';
@@ -150,5 +177,24 @@ export function renderSideProfile(shot) {
     sideCtx.font = '9px sans-serif';
     sideCtx.textAlign = 'left';
     sideCtx.fillText(`過網 ${netClearanceY.toFixed(2)}m`, netX + 4, netYPx + 3);
+  }
+
+  // v0.2b：攔截點標記（hitPoint 有值時，紅點＋帶位標籤）
+  if (shot.hitPoint && shot.hitPoint.t !== undefined) {
+    const hpPx = z2px(shot.hitPoint.z);
+    const hpPy = y2py(shot.hitPoint.y);
+    sideCtx.fillStyle = '#ff5252';
+    sideCtx.beginPath();
+    sideCtx.arc(hpPx, hpPy, 4, 0, Math.PI * 2);
+    sideCtx.fill();
+    sideCtx.strokeStyle = '#ffffff';
+    sideCtx.lineWidth = 1;
+    sideCtx.stroke();
+    const levelLabel = shot.hitPoint.level === 'high' ? '高位'
+      : (shot.hitPoint.level === 'mid' ? '中位' : '低位');
+    sideCtx.fillStyle = '#ff8a80';
+    sideCtx.font = 'bold 9px sans-serif';
+    sideCtx.textAlign = 'center';
+    sideCtx.fillText(`攔截 ${shot.hitPoint.y.toFixed(2)}m（${levelLabel}）`, hpPx, Math.max(10, hpPy - 7));
   }
 }

@@ -1,9 +1,9 @@
 import { COURT, ARC_TYPES, LIMITS, SPEED_RANGES, PHYSICS } from '../config/constants.js';
-import { getDefaultApexForArc, getDefaultApexPosForArc, getEffectiveEnd } from '../models/shot.js';
+import { getDefaultApexForArc, getDefaultApexPosForArc } from '../models/shot.js';
 import { dist2D } from '../utils/helpers.js';
 import { getPlayers } from '../models/player.js';
 
-// ========== 物理引擎 v0.2A ==========
+// ========== 物理引擎 v0.2b ==========
 
 export function getInitialSpeed(shot) {
   if (!shot || shot.isSetup) return 0;
@@ -17,20 +17,14 @@ export function getInitialSpeed(shot) {
   return getArcSpeed(shot);
 }
 
-/**
- * 估算快壓的飛行時間（給定速度）
- */
 function estimatePressFlightTime(shot, speedKmh) {
   const from = shot.ballFrom;
-  const to = getEffectiveEnd(shot);
+  const to = shot.ballTo;
   const dist = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
   const speedMps = speedKmh / 3.6;
-  return Math.max(0.3, dist / (speedMps * 0.7));
+  return Math.max(0.3, dist / (speedMps * 0.3));
 }
 
-/**
- * 估算擊球方到達擊球點的時間
- */
 function estimatePlayerArrivalTime(shot) {
   const striker = shot.striker;
   const strikerIds = Object.keys(shot.players).filter(id => id.startsWith(striker));
@@ -45,14 +39,6 @@ function estimatePlayerArrivalTime(shot) {
   return dist / Math.max(0.5, speed);
 }
 
-/**
- * 快壓速度計算（迭代求解）
- * 基準：擊球方等待球下落的時間
- *   > 1s：蓄力重殺
- *   > 0.5s：從容
- *   > 0s：剛好
- *   <= 0s：遲到
- */
 function getPressSpeed(shot) {
   const from = shot.ballFrom;
   const arcType = shot.arcType;
@@ -68,34 +54,24 @@ function getPressSpeed(shot) {
     return min;
   }
 
-  // 初始估計：中位數
   let speed = Math.round((min + max) / 2);
   const playerArrivalTime = estimatePlayerArrivalTime(shot);
 
   for (let iter = 0; iter < 3; iter++) {
-    // 用當前速度計算球到達時間
     const flightTime = estimatePressFlightTime(shot, speed);
-
-    // 等待時間 = 球到達時間 - 球員到達時間
     const waitTime = flightTime - playerArrivalTime;
 
-    // 根據等待時間調整速度
     let newSpeed;
     if (waitTime > 1.0) {
-      // 蓄力重殺：接近上限
       newSpeed = Math.round(min + (max - min) * 0.9);
     } else if (waitTime > 0.5) {
-      // 從容：中上
       newSpeed = Math.round(min + (max - min) * 0.7);
     } else if (waitTime > 0) {
-      // 剛好：中等
       newSpeed = Math.round(min + (max - min) * 0.5);
     } else {
-      // 遲到：中下
       newSpeed = Math.round(min + (max - min) * 0.3);
     }
 
-    // 收斂條件：差異 < 5 km/h
     if (Math.abs(newSpeed - speed) < 5) {
       speed = newSpeed;
       break;
@@ -108,7 +84,7 @@ function getPressSpeed(shot) {
 
 function getArcSpeed(shot) {
   const from = shot.ballFrom;
-  const to = getEffectiveEnd(shot);
+  const to = shot.ballTo;
   const arcType = shot.arcType;
 
   const horizontalDist = dist2D(from, to);
@@ -156,7 +132,7 @@ export function getTrajectoryPoint(shot, t) {
 
 function getPressTrajectory(shot, t) {
   const from = shot.ballFrom;
-  const to = getEffectiveEnd(shot);
+  const to = shot.ballTo;
   const arcType = shot.arcType;
 
   const decay = arcType === 'fast_press' ? 1.8 : 1.2;
@@ -185,7 +161,7 @@ function getPressTrajectory(shot, t) {
 
 function getArcTrajectory(shot, t) {
   const from = shot.ballFrom;
-  const to = getEffectiveEnd(shot);
+  const to = shot.ballTo;
   const arcType = shot.arcType;
 
   const userApex = shot.apexHeight !== undefined ? shot.apexHeight : getDefaultApexForArc(arcType, from.y, to.y);
@@ -237,34 +213,31 @@ export function getSpeedAndForce(from, to, arcType) {
 
 function getFlightDistance3D(shot) {
   const from = shot.ballFrom;
-  const to = getEffectiveEnd(shot);
+  const to = shot.ballTo;
   const dx = to.x - from.x;
   const dz = to.z - from.z;
-  // 水平距離（忽略高度差）
   return Math.hypot(dx, dz);
 }
 
-/**
- * 計算平均速度（km/h）
- */
 function getAverageSpeed(shot) {
   const initialKmh = getInitialSpeed(shot);
   if (initialKmh === 0) return 0;
   return Math.round(initialKmh * 0.6);
 }
 
-export function getShotDuration(shot) {
+export function getFullDuration(shot) {
   if (!shot || shot.isSetup) return 1.0;
 
   const arcType = shot.arcType;
   const from = shot.ballFrom;
-  const to = getEffectiveEnd(shot);
+  const to = shot.ballTo;
 
   if (arcType === 'fast_press' || arcType === 'soft_press') {
     const dist = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
     const speedKmh = getInitialSpeed(shot);
     const speedMps = speedKmh / 3.6;
-    let duration = dist / (speedMps * 0.7);
+    const factor = arcType === 'fast_press' ? 0.3 : 0.15;
+    let duration = dist / (speedMps * factor);
     return Math.max(0.3, Math.min(2.0, duration));
   }
 
@@ -281,6 +254,18 @@ export function getShotDuration(shot) {
   return Math.max(0.3, Math.min(6.0, duration));
 }
 
+export function getShotDuration(shot) {
+  if (!shot || shot.isSetup) return 1.0;
+
+  const fullDur = getFullDuration(shot);
+
+  if (shot.hitPoint && shot.hitPoint.t !== undefined) {
+    return Math.max(0.3, fullDur * shot.hitPoint.t);
+  }
+
+  return fullDur;
+}
+
 export function getTotalRallyDuration(shots) {
   let total = 0;
   for (let i = 1; i < shots.length; i++) {
@@ -289,27 +274,28 @@ export function getTotalRallyDuration(shots) {
   return Math.max(0.1, total);
 }
 
-/**
- * 物理診斷
- * v0.2A：回傳結構化 stats 數據
- */
+export function getEffectiveEnd(shot) {
+  if (!shot) return null;
+  if (shot.interception && shot.interception.pt) return shot.interception.pt;
+  if (shot.hitPoint) return shot.hitPoint;
+  return shot.ballTo;
+}
+
 export function checkPhysics(shot, shots, mode) {
   if (shot.isSetup) {
     return {
       valid: true,
       type: 'ok',
-      msg: '第 0 拍：初始發接發站位調整',
-      stats: null,
-      speedWarns: []
+      msg: '調整發接發站位',
+      stats: null
     };
   }
   if (shot.pendingTo) {
     return {
       valid: true,
       type: 'ok',
-      msg: '🎯 請點擊對面場地設定球路落點',
-      stats: null,
-      speedWarns: []
+      msg: '點擊場地設定落點',
+      stats: null
     };
   }
 
@@ -328,17 +314,29 @@ export function checkPhysics(shot, shots, mode) {
     }
   }
 
-  // 速度警告
-  const speedWarns = [];
-  const prevShotIndex = shots.indexOf(shot) - 1;
-  const prevShot = prevShotIndex >= 0 ? shots[prevShotIndex] : null;
-
-  // 球員移動距離
   const playerMovements = {};
+  let maxDefenderRequiredSpeed = 0;
+  let maxDefenderId = null;
+  let maxStrikerRequiredSpeed = 0;
+  let maxStrikerId = null;
+
+  const striker = shot.striker;
+  const defender = striker === 'A' ? 'B' : 'A';
+
+  // 診斷與配速同源：起點以上一拍 previewPositions 優先（與 computeHitPoint/matchReceiverSpeed 同源）；
+  // 接球方終點以攔截點水平座標為準（無攔截時為落點 preview），避免「速度不足」誤報。
+  const diagIdx = shots.indexOf(shot);
+  const diagPrevShot = diagIdx > 0 ? shots[diagIdx - 1] : null;
 
   Object.entries(shot.players).forEach(([id, p]) => {
-    const previewPos = shot.previewPositions?.[id] || p;
-    const dist = Math.hypot(previewPos.x - p.x, previewPos.z - p.z);
+    const startPos = (diagPrevShot?.previewPositions?.[id])
+      ? diagPrevShot.previewPositions[id]
+      : p;
+    let endPos = shot.previewPositions?.[id] || p;
+    if (id.startsWith(defender) && shot.hitPoint) {
+      endPos = { x: shot.hitPoint.x, z: shot.hitPoint.z };
+    }
+    const dist = Math.hypot(endPos.x - startPos.x, endPos.z - startPos.z);
     const reqSpeed = dist / Math.max(0.1, flightTime);
 
     playerMovements[id] = {
@@ -347,106 +345,173 @@ export function checkPhysics(shot, shots, mode) {
       currentSpeed: p.speed || 3.0
     };
 
-    if (reqSpeed > LIMITS.playerMaxSpeed) {
-      speedWarns.push({
-        id,
-        type: 'extreme',
-        msg: `⚠️ 球員 ${id} 跑動距離過大 (${dist.toFixed(1)}m)，需 ${reqSpeed.toFixed(1)}m/s，超過人類極限！`,
-        required: reqSpeed,
-        current: p.speed || 3.0
-      });
-    } else if (reqSpeed > (p.speed || 3.0)) {
-      speedWarns.push({
-        id,
-        type: 'need_faster',
-        msg: `⚠️ 球員 ${id} 跑動 ${dist.toFixed(1)}m，速度 ${(p.speed || 3.0).toFixed(1)}m/s 低於所需 ${reqSpeed.toFixed(1)}m/s`,
-        required: reqSpeed,
-        current: p.speed || 3.0
-      });
+    if (id.startsWith(defender)) {
+      if (reqSpeed > maxDefenderRequiredSpeed) {
+        maxDefenderRequiredSpeed = reqSpeed;
+        maxDefenderId = id;
+      }
+    }
+
+    if (id.startsWith(striker)) {
+      if ((p.speed || 3.0) > maxStrikerRequiredSpeed) {
+        maxStrikerRequiredSpeed = p.speed || 3.0;
+        maxStrikerId = id;
+      }
     }
   });
 
-  // 快壓/輕壓 高度檢查
+  const stats = {
+    initialSpeed: initialSpeedKmh,
+    averageSpeed: averageSpeedKmh,
+    flightDistance: flightDist,
+    flightTime: flightTime,
+    netClearance: minNetHeight,
+    playerMovements
+  };
+
   if ((shot.arcType === 'fast_press' || shot.arcType === 'soft_press') && shot.hitLevel !== 'high') {
     return {
       valid: false,
       type: 'warn',
-      msg: `⚠️ 違背物理規律：${shot.hitLevel}位擊球無法進行${ARC_TYPES[shot.arcType].name}！`,
-      stats: {
-        initialSpeed: initialSpeedKmh,
-        averageSpeed: averageSpeedKmh,
-        flightDistance: flightDist,
-        flightTime: flightTime,
-        netClearance: minNetHeight,
-        playerMovements
-      },
-      speedWarns
+      msg: `⚠️ 違背物理規律：${shot.hitLevel}位擊球無法進行${ARC_TYPES[shot.arcType].name}`,
+      stats
     };
   }
 
-  // 觸網檢查
   if (netPassed && minNetHeight < COURT.net_height) {
     return {
       valid: false,
       type: 'warn',
-      msg: `⚠️ 軌跡過網高度僅 ${minNetHeight.toFixed(2)}m (網高 ${COURT.net_height}m)，球將觸網！`,
-      stats: {
-        initialSpeed: initialSpeedKmh,
-        averageSpeed: averageSpeedKmh,
-        flightDistance: flightDist,
-        flightTime: flightTime,
-        netClearance: minNetHeight,
-        playerMovements
-      },
-      speedWarns
+      msg: `⚠️ 過網太低（${minNetHeight.toFixed(2)}m）`,
+      stats
     };
   }
 
-  // 速度警告
-  if (speedWarns.length > 0) {
-    const needsFaster = speedWarns.filter(w => w.type === 'need_faster');
-    const extremes = speedWarns.filter(w => w.type === 'extreme');
+  const SPEED_TOLERANCE = 0.05;
 
-    let suggestion = '';
-    if (needsFaster.length > 0) {
-      const maxReq = Math.max(...needsFaster.map(w => w.required));
-      suggestion = ` 💡 建議速度：${Math.ceil(maxReq * 10) / 10}m/s`;
-    }
-    if (extremes.length > 0) {
-      suggestion = ' ⚠️ 部分球員速度超過人類極限 (8m/s)';
-    }
-
+  if (maxStrikerId && maxStrikerRequiredSpeed > LIMITS.playerMaxSpeed + SPEED_TOLERANCE) {
     return {
       valid: false,
       type: 'warn',
-      msg: speedWarns.map(w => w.msg).join(' ') + suggestion,
-      stats: {
-        initialSpeed: initialSpeedKmh,
-        averageSpeed: averageSpeedKmh,
-        flightDistance: flightDist,
-        flightTime: flightTime,
-        netClearance: minNetHeight,
-        playerMovements
-      },
-      speedWarns
+      msg: `⚠️ 回中速度超限：${maxStrikerId} ${maxStrikerRequiredSpeed.toFixed(1)}m/s`,
+      stats
     };
   }
 
-  // 正常
-  const interceptNote = shot.interception ? ` [攔截於 ${shot.interception.height.toFixed(2)}m]` : '';
+  if (maxDefenderId) {
+    if (maxDefenderRequiredSpeed > LIMITS.playerMaxSpeed + SPEED_TOLERANCE) {
+      return {
+        valid: false,
+        type: 'warn',
+        msg: `⚠️ 速度不足：${maxDefenderId} 需 ${maxDefenderRequiredSpeed.toFixed(1)}m/s（上限 ${LIMITS.playerMaxSpeed.toFixed(1)}）`,
+        stats
+      };
+    }
+
+    if (maxDefenderRequiredSpeed > (shot.players[maxDefenderId]?.speed || 3.0) + SPEED_TOLERANCE) {
+      return {
+        valid: false,
+        type: 'warn',
+        msg: `⚠️ 速度不足：${maxDefenderId} 需 ${maxDefenderRequiredSpeed.toFixed(1)}m/s`,
+        stats
+      };
+    }
+  }
+
+  // v0.2b：高/中帶不可達常駐診斷
+  // 下一拍宣告的 hitLevel 若超出此球路在守方半場可達的高度帶，
+  // matchReceiverSpeed 已自動降級配速（宣告保留不動），此處常駐提示取代「✓ 物理正常」。
+  const shotIdx = shots.indexOf(shot);
+  const nextShot = (shotIdx >= 0 && shotIdx < shots.length - 1) ? shots[shotIdx + 1] : null;
+  if (nextShot && !nextShot.isSetup && !nextShot.pendingTo) {
+    const targetLevel = nextShot.hitLevel;
+    const highDeadline = targetLevel === 'high' ? findBandDeadline(shot, 'high') : null;
+    const midDeadline = (targetLevel === 'high' || targetLevel === 'mid')
+      ? findBandDeadline(shot, 'mid') : null;
+
+    if (targetLevel === 'high' && !highDeadline) {
+      // 壓制球（快壓/輕壓）過網即低於 2.0m，高位物理上不存在——訊息特化點出原因
+      const isPressShot = shot.arcType === 'fast_press' || shot.arcType === 'soft_press';
+
+      // v0.2c G1：mid 帶幾何存在（midDeadline 非 null）但帶內所有點 clamp 8.0 仍不可達
+      // → findInterception 限 [1.4, 2.0] 返回 null → hitPoint=null 球落地，
+      // 補強診斷取代「已按中位配速」，避免用戶誤以為中位攔截成功
+      if (midDeadline) {
+        const diagDefenderId = (getPlayers(mode)['B'] || getPlayers(mode)['A'] || [])[0];
+        if (diagDefenderId) {
+          const diagPrevShot = shotIdx > 0 ? shots[shotIdx - 1] : null;
+          const diagStartPos = (diagPrevShot?.previewPositions?.[diagDefenderId])
+            ? diagPrevShot.previewPositions[diagDefenderId]
+            : (shot.players?.[diagDefenderId] || diagPrevShot?.players?.[diagDefenderId]);
+          if (diagStartPos) {
+            const maxSpeedHit = findInterception(shot, diagStartPos, 8.0, 1.4, 2.0);
+            if (!maxSpeedHit) {
+              return {
+                valid: true,
+                type: 'warn',
+                msg: isPressShot
+                  ? '⚠️ 快壓球不可選高位：中位攔截亦不可達，球落地'
+                  : '⚠️ 高位不可達、中位攔截亦不可達：速度上限 8.0m/s 無法攔截，球落地',
+                stats
+              };
+            }
+          }
+        }
+      }
+
+      return {
+        valid: true,
+        type: 'warn',
+        msg: isPressShot
+          ? (midDeadline
+              ? '⚠️ 快壓球不可選高位：過網即低於 2.0m，已按中位配速'
+              : '⚠️ 快壓球不可選高位：中位亦不可達，已按低位配速（球落地）')
+          : (midDeadline
+              ? '⚠️ 高位不可達：此球路過網後無法在 2.0m 以上攔截，已按中位配速'
+              : '⚠️ 高位不可達：中位亦不可達，已按低位配速（球落地）'),
+        stats
+      };
+    }
+
+    if (targetLevel === 'mid' && !midDeadline) {
+      return {
+        valid: true,
+        type: 'warn',
+        msg: '⚠️ 中位不可達：已按低位配速（球落地）',
+        stats
+      };
+    }
+
+    // v0.2c：mid 帶幾何存在（deadline 非 null）但帶內所有點 player clamp 8.0 仍不可達
+    // → findInterception 限 [1.4, 2.0] 返回 null → hitPoint=null 球落地，
+    // 診斷不會顯示「中位不可達」（因 midDeadline 存在），需額外提示避免無說明的球落地行為
+    if (targetLevel === 'mid' && midDeadline) {
+      const diagDefenderId = (getPlayers(mode)['B'] || getPlayers(mode)['A'] || [])[0];
+      if (diagDefenderId) {
+        const diagPrevShot = shotIdx > 0 ? shots[shotIdx - 1] : null;
+        const diagStartPos = (diagPrevShot?.previewPositions?.[diagDefenderId])
+          ? diagPrevShot.previewPositions[diagDefenderId]
+          : (shot.players?.[diagDefenderId] || diagPrevShot?.players?.[diagDefenderId]);
+        if (diagStartPos) {
+          const maxSpeedHit = findInterception(shot, diagStartPos, 8.0, 1.4, 2.0);
+          if (!maxSpeedHit) {
+            return {
+              valid: true,
+              type: 'warn',
+              msg: '⚠️ 中位攔截不可達：速度上限 8.0m/s 無法在中帶攔截',
+              stats
+            };
+          }
+        }
+      }
+    }
+  }
+
   return {
     valid: true,
     type: 'ok',
-    msg: `✓ 物理正常${interceptNote}`,
-    stats: {
-      initialSpeed: initialSpeedKmh,
-      averageSpeed: averageSpeedKmh,
-      flightDistance: flightDist,
-      flightTime: flightTime,
-      netClearance: minNetHeight,
-      playerMovements
-    },
-    speedWarns: []
+    msg: '✓ 物理正常',
+    stats
   };
 }
 
@@ -476,7 +541,7 @@ export function getInterceptionInfo(shot, mode) {
 
       const isDefenderArea = defenderSide === 'A' ? (pt.z >= -0.1) : (pt.z <= 0.1);
 
-      if (isDefenderArea && pt.y >= 0.8 && pt.y <= 2.8) {
+      if (isDefenderArea && pt.y >= LIMITS.INTERCEPT_Y_MIN && pt.y <= LIMITS.INTERCEPT_Y_MAX) {
         const snapX = shot.ballFrom.x + t * (shot.ballTo.x - shot.ballFrom.x);
         const snapZ = shot.ballFrom.z + t * (shot.ballTo.z - shot.ballFrom.z);
 
@@ -501,4 +566,87 @@ export function getInterceptionInfo(shot, mode) {
   });
 
   return intercepts;
+}
+
+// ========== v0.2b：擊球點計算核心 ==========
+
+export function getHeightLevel(y) {
+  if (y < 0.1) return 'invalid';
+  if (y >= 2.0) return 'high';
+  if (y >= 1.4) return 'mid';
+  return 'low';
+}
+
+/**
+ * v0.2b：攔截點求解（純粹化）
+ * 輸入只有：球軌跡、接球方起點 startPos、接球方速度 speed、帶位範圍 [minBallY, maxBallY]。
+ * 掃描軌跡，取「最早」滿足以下全部條件的 t：
+ *   1. 球高度在 [minBallY, maxBallY] 區間（預設 [1.4, 3.0]；壓制球低位攔截傳 [0.1, 3.0]；
+ *      宣告 high 傳 [2.0, 3.0]、宣告 mid 傳 [1.4, 2.0]——帶位忠實）
+ *   2. 球在守方半場（已過網）
+ *   3. 接球方可達：dist(startPos, 球位置) / speed ≤ t × 全程時間
+ * 無解回傳 null（呼叫端以 ballTo 作為有效結束點，球落地結束本拍）。
+ */
+export function findInterception(shot, startPos, speed, minBallY = 1.4, maxBallY = 3.0) {
+  if (!shot || shot.isSetup || shot.pendingTo) return null;
+  if (!startPos || !speed || speed <= 0) return null;
+
+  const duration = getFullDuration(shot);
+  if (duration <= 0) return null;
+
+  const defenderSide = shot.striker === 'A' ? 'B' : 'A';
+  const MIN_BALL_Y = minBallY;
+  const MAX_BALL_Y = maxBallY;
+  const STEP = 0.005;
+
+  for (let t = 0; t <= 1.0; t += STEP) {
+    const ballPos = getTrajectoryPoint(shot, t);
+    if (ballPos.y < MIN_BALL_Y || ballPos.y > MAX_BALL_Y) continue;
+
+    // 只能在守方半場攔截（過網之後）
+    const isDefenderArea = defenderSide === 'A' ? (ballPos.z >= -0.1) : (ballPos.z <= 0.1);
+    if (!isDefenderArea) continue;
+
+    const dist = Math.hypot(ballPos.x - startPos.x, ballPos.z - startPos.z);
+    const flightTime = t * duration;
+    const playerTime = dist / speed;
+
+    if (playerTime <= flightTime) {
+      return {
+        t: t,
+        time: flightTime,
+        pt: { x: ballPos.x, y: ballPos.y, z: ballPos.z },
+        height: ballPos.y,
+        level: getHeightLevel(ballPos.y),
+        distance: dist,
+        playerPos: { x: startPos.x, z: startPos.z }
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * v0.2b：求目標高度帶的「截止時刻」
+ * 高位 → 球在守方半場下降穿過 2.0m 的時刻；中位 → 下降穿過 1.4m 的時刻。
+ * 回傳 { t, pt }（t 為 0-1 正規化，pt 為當時球位置）；
+ * 球在守方半場到不了該高度（過網前已低於下緣）時回 null。
+ * 供 matchReceiverSpeed 以「球到達攔截點的時間」反求接球方所需速度。
+ */
+export function findBandDeadline(shot, targetLevel) {
+  if (!shot || shot.isSetup || shot.pendingTo) return null;
+  const hMin = targetLevel === 'high' ? 2.0 : (targetLevel === 'mid' ? 1.4 : null);
+  if (hMin === null) return null;
+
+  const defenderSide = shot.striker === 'A' ? 'B' : 'A';
+  const STEP = 0.005;
+
+  for (let t = 1.0; t >= 0; t -= STEP) {
+    const ballPos = getTrajectoryPoint(shot, t);
+    const isDefenderArea = defenderSide === 'A' ? (ballPos.z >= -0.1) : (ballPos.z <= 0.1);
+    if (isDefenderArea && ballPos.y >= hMin) {
+      return { t: t, pt: { x: ballPos.x, y: ballPos.y, z: ballPos.z } };
+    }
+  }
+  return null;
 }

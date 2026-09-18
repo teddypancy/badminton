@@ -245,18 +245,23 @@ export function sync3DPositions(atEnd = false) {
 function update3DTrajectory(shot) {
   const scene = getScene();
 
+  // 清除舊軌跡
   if (trajectoryMesh) {
     scene.remove(trajectoryMesh);
     trajectoryMesh = null;
   }
 
+  // v0.2A：停用 3D 黃色軌跡管（只保留拖尾）
+  return;
+
+  // 以下為原本的生成邏輯（保留供未來使用）
+  /*
   if (!shot || shot.isSetup || shot.pendingTo) return;
 
   const data = getTrajectoryData(shot, 40);
   if (data.points.length < 2) return;
 
   const points = data.points.map(p => new THREE.Vector3(p.x, p.y, p.z));
-
   const curve = new THREE.CatmullRomCurve3(points);
   const tubeGeo = new THREE.TubeGeometry(curve, 64, 0.025, 8, false);
   const tubeMat = new THREE.MeshStandardMaterial({
@@ -268,6 +273,7 @@ function update3DTrajectory(shot) {
   });
   trajectoryMesh = new THREE.Mesh(tubeGeo, tubeMat);
   scene.add(trajectoryMesh);
+  */
 }
 
 // ========== 球體尾跡 ==========

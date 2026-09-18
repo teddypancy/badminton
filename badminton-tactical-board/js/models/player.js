@@ -24,26 +24,26 @@ export function getDefaultSetupPlayers(mode) {
 
   const teamA = players.A || [];
   if (teamA.length === 1) {
-    result[teamA[0]] = { x: 1.25, z: 3.35, speed: 3.0 };
+    result[teamA[0]] = { x: 1.25, z: 3.35, speed: 2.0 };
   } else if (teamA.length === 2) {
-    result[teamA[0]] = { x: 1.25, z: 3.35, speed: 3.0 };
-    result[teamA[1]] = { x: -1.25, z: 3.35, speed: 3.0 };
+    result[teamA[0]] = { x: 1.25, z: 3.35, speed: 2.0 };
+    result[teamA[1]] = { x: -1.25, z: 3.35, speed: 2.0 };
   } else if (teamA.length >= 3) {
-    result[teamA[0]] = { x: 0, z: 2.0, speed: 3.0 };
-    result[teamA[1]] = { x: 1.25, z: 4.8, speed: 3.0 };
-    result[teamA[2]] = { x: -1.25, z: 4.8, speed: 3.0 };
+    result[teamA[0]] = { x: 0, z: 2.0, speed: 2.0 };
+    result[teamA[1]] = { x: 1.25, z: 4.8, speed: 2.0 };
+    result[teamA[2]] = { x: -1.25, z: 4.8, speed: 2.0 };
   }
 
   const teamB = players.B || [];
   if (teamB.length === 1) {
-    result[teamB[0]] = { x: -1.25, z: -3.35, speed: 3.0 };
+    result[teamB[0]] = { x: -1.25, z: -3.35, speed: 2.0 };
   } else if (teamB.length === 2) {
-    result[teamB[0]] = { x: -1.25, z: -3.35, speed: 3.0 };
-    result[teamB[1]] = { x: 1.25, z: -3.35, speed: 3.0 };
+    result[teamB[0]] = { x: -1.25, z: -3.35, speed: 2.0 };
+    result[teamB[1]] = { x: 1.25, z: -3.35, speed: 2.0 };
   } else if (teamB.length >= 3) {
-    result[teamB[0]] = { x: 0, z: -2.0, speed: 3.0 };
-    result[teamB[1]] = { x: -1.25, z: -4.8, speed: 3.0 };
-    result[teamB[2]] = { x: 1.25, z: -4.8, speed: 3.0 };
+    result[teamB[0]] = { x: 0, z: -2.0, speed: 2.0 };
+    result[teamB[1]] = { x: -1.25, z: -4.8, speed: 2.0 };
+    result[teamB[2]] = { x: 1.25, z: -4.8, speed: 2.0 };
   }
 
   return result;

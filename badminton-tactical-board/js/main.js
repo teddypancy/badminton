@@ -5,7 +5,7 @@ import { showToast } from './utils/toast.js';
 import { getState, setState, getShots, getCurrentShot, getCurrentIndex, setCurrentIndex, pushHistory, getAnimTime, setAnimTime } from './core/state.js';
 import { getPlayers, getDefaultSetupPlayers, detectHitLevel } from './models/player.js';
 import { getTrajectoryPoint, getShotDuration, getTotalRallyDuration, checkPhysics, getInterceptionInfo } from './core/physics.js';
-import { newShot, initDemo, autoMatchShotProperties, applySmartPositions, cascadeBallPositions, updateShot1Server } from './models/shot.js';
+import { newShot, initDemo, autoMatchShotProperties, matchReceiverSpeed, applySmartPositions, cascadeBallPositions, updateShot1Server, computeHitPoint } from './models/shot.js';
 import { resizeCanvas, render2D, m2px, px2m } from './2d/renderer.js';
 import { initInteractions } from './2d/interactions.js';
 import { initSideProfile, renderSideProfile } from './2d/sideprofile.js';
@@ -80,8 +80,14 @@ window.setServer = function(team) {
 
 window.setPlayerSpeed = function(id, speed) {
   const shot = getCurrentShot();
+  const shots = getShots();
+  const state = getState();
   if (shot && shot.players[id]) {
     shot.players[id].speed = parseFloat(speed.toFixed(1));
+    // 重算 hitPoint
+    const idx = getCurrentIndex();
+    const prevShot = idx > 0 ? shots[idx - 1] : null;
+    shot.hitPoint = computeHitPoint(shot, prevShot, shot.hitLevel || 'high');
     render2D();
     sync3DPositions();
     updateParamPanel();
@@ -89,18 +95,20 @@ window.setPlayerSpeed = function(id, speed) {
 };
 
 window.adjustPlayerSpeed = function(id, delta) {
-  const current = getCurrentShot()?.players[id]?.speed || 3.0;
+  const current = getCurrentShot()?.players[id]?.speed || 2.0;
   window.setPlayerSpeed(id, Math.max(1.0, Math.min(8.0, current + delta)));
 };
 
 window.setArcType = function(type) {
   const shot = getCurrentShot();
   const state = getState();
+  const shots = getShots();
   if (shot && !shot.isSetup) {
     shot.arcType = type;
-    shot.apexOverride = false;  // 切換球路 → 重設 Apex 為新預設
-    const shots = getShots();
+    shot.apexOverride = false;
     autoMatchShotProperties(shot, shots, state.mode, state.appMode);
+    // 統一智能匹配：球路改變 → 接球方速度依新球路重匹配（band = 下一拍 hitLevel）
+    matchReceiverSpeed(shot, shots);
     cascadeBallPositions(getCurrentIndex(), shots, state.mode, state.appMode);
     render2D();
     sync3DPositions();
@@ -113,16 +121,19 @@ window.setArcType = function(type) {
 window.setHitLevel = function(level) {
   const shot = getCurrentShot();
   const state = getState();
+  const shots = getShots();
+
   if (shot && !shot.isSetup) {
     shot.hitLevel = level;
     shot.hitLevelOverride = true;
-    if (level === 'high') shot.ballFrom.y = Math.max(2.1, shot.ballFrom.y);
-    else if (level === 'mid') shot.ballFrom.y = 1.6;
-    else shot.ballFrom.y = 1.15;
 
-    const shots = getShots();
-    autoMatchShotProperties(shot, shots, state.mode, state.appMode);
-    cascadeBallPositions(getCurrentIndex(), shots, state.mode, state.appMode);
+    // 統一智能匹配：改 hitLevel → 前一拍接球方速度重匹配（band = 本拍 hitLevel）
+    if (getCurrentIndex() > 0) {
+      matchReceiverSpeed(shots[getCurrentIndex() - 1], shots);
+    }
+    cascadeBallPositions(Math.max(1, getCurrentIndex() - 1), shots, state.mode, state.appMode);
+    applySmartPositions(shot, shots, state.mode, state.appMode);
+
     render2D();
     sync3DPositions();
     renderSideProfile(shot);
@@ -146,9 +157,14 @@ window.setForehand = function(isForehand) {
 
 window.setApexHeight = function(h) {
   const shot = getCurrentShot();
+  const state = getState();
+  const shots = getShots();
   if (shot && !shot.isSetup) {
     shot.apexHeight = Math.max(1.0, Math.min(8.0, h));
-    shot.apexOverride = true;  // 手動調 → 標記
+    shot.apexOverride = true;
+    // 統一智能匹配：頂點改變 → 接球方速度重匹配 → 攔截點 → 站位 → 下一拍起點
+    matchReceiverSpeed(shot, shots);
+    cascadeBallPositions(getCurrentIndex(), shots, state.mode, state.appMode);
     render2D();
     sync3DPositions();
     renderSideProfile(shot);
@@ -164,9 +180,14 @@ window.adjustApexHeight = function(delta) {
 
 window.setApexPos = function(pos) {
   const shot = getCurrentShot();
+  const state = getState();
+  const shots = getShots();
   if (shot && !shot.isSetup) {
     shot.apexPos = Math.max(0.05, Math.min(0.95, pos));
-    shot.apexOverride = true;  // 手動調 → 標記
+    shot.apexOverride = true;
+    // 統一智能匹配：頂點位置改變 → 接球方速度重匹配 → 攔截點 → 站位 → 下一拍起點
+    matchReceiverSpeed(shot, shots);
+    cascadeBallPositions(getCurrentIndex(), shots, state.mode, state.appMode);
     render2D();
     sync3DPositions();
     renderSideProfile(shot);
@@ -250,7 +271,6 @@ function init() {
   initSideProfile();
   initInteractions();
 
-  // 優先從 localStorage 載入腳本
   const scriptLib = getScriptLibrary();
   if (scriptLib.length > 0 && scriptLib[0].data && scriptLib[0].data.shots && scriptLib[0].data.shots.length > 0) {
     loadScriptFromLibrary(scriptLib[0].id);
@@ -271,13 +291,11 @@ function init() {
   updateLogButton();
   updateHUD();
 
-  // 3D控制台默認收起
   const tb = document.getElementById('integrated-toolbar');
   if (tb) tb.classList.add('hidden');
   const tbBtn = document.getElementById('btn-toggle-tb');
   if (tbBtn) tbBtn.classList.remove('active');
 
-  // 手繪工具欄默認隱藏
   const freeTb = document.getElementById('free-draw-toolbar');
   if (freeTb) freeTb.style.display = 'none';
 
@@ -286,7 +304,7 @@ function init() {
     renderer.render(scene, camera);
   }
 
-  console.log('🏸 羽球戰術板 v0.2 已初始化');
+  console.log('🏸 羽球戰術板 v0.3 已初始化');
 }
 
 // ========== UI 事件綁定 ==========
@@ -305,7 +323,6 @@ function bindUIEvents() {
     }
   });
 
-  // 3D控制台
   document.getElementById('btn-toggle-tb').addEventListener('click', () => {
     const tb = document.getElementById('integrated-toolbar');
     tb.classList.toggle('hidden');
@@ -354,28 +371,10 @@ function bindUIEvents() {
 
   stepBtn.addEventListener('click', () => {
     const state = getState();
-    const shots = getShots();
-    const totalDur = getTotalRallyDuration(shots);
-
     state.stepMode = !state.stepMode;
     stepBtn.classList.toggle('active', state.stepMode);
-
-    if (state.stepMode) {
-      let animTime = getAnimTime();
-      if (animTime >= totalDur) {
-        setAnimTime(0);
-        window.setCurrentShot(0, true);
-        clearBallTrail();
-        if (window.__clearTrail) window.__clearTrail();
-      }
-      if (!state.playing) {
-        state.playing = true;
-        playBtn.textContent = '⏸ 暫停';
-      }
-    }
   });
 
-  // 時間軸
   document.getElementById('timeline').addEventListener('input', (e) => {
     const state = getState();
     state.playing = false;
@@ -399,7 +398,6 @@ function bindUIEvents() {
     }
   });
 
-  // 速度
   document.querySelectorAll('.speed-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
@@ -409,7 +407,6 @@ function bindUIEvents() {
     });
   });
 
-  // 視角
   document.querySelectorAll('.view-btn').forEach(btn => {
     btn.addEventListener('click', () => setCameraView(btn.dataset.view));
   });
@@ -453,7 +450,7 @@ function bindUIEvents() {
     showToast('戰術腳本已更新保存！');
   });
 
-  // ===== 模式切換（腳本 / 手繪） =====
+  // ===== 模式切換 =====
   document.querySelectorAll('.mode-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
@@ -506,7 +503,6 @@ function bindUIEvents() {
     render2D();
   });
 
-  // 顏色選擇器（7色）
   const colorListContainer = document.getElementById('color-picker-list');
   if (colorListContainer) {
     const colors = ['#ff5252', '#2196f3', '#ffd54f', '#4caf50', '#ff9800', '#ab47bc', '#ffffff'];
@@ -525,7 +521,7 @@ function bindUIEvents() {
     });
   }
 
-  // ===== 日誌（右上角下拉） =====
+  // ===== 日誌 =====
   const logBtn = document.getElementById('btn-log');
   const logPanel = document.getElementById('log-panel');
 
@@ -562,7 +558,7 @@ function bindUIEvents() {
     }
   });
 
-  // ===== 腳本管理（右上角下拉） =====
+  // ===== 腳本管理 =====
   const scriptsBtn = document.getElementById('btn-scripts');
   const scriptsPanel = document.getElementById('scripts-panel');
 
@@ -594,7 +590,6 @@ function bindUIEvents() {
     }
   });
 
-  // 新增腳本
   document.getElementById('btn-new-script').addEventListener('click', function(e) {
     e.stopPropagation();
     document.getElementById('script-type-modal').style.display = 'flex';
@@ -639,7 +634,6 @@ function bindUIEvents() {
     });
   });
 
-  // 導入/導出
   document.getElementById('btn-export-all').addEventListener('click', function(e) {
     e.stopPropagation();
     exportAllScripts();
@@ -662,7 +656,6 @@ function bindUIEvents() {
     e.target.value = '';
   });
 
-  // ===== 分割條拖動邏輯 =====
   initResizer();
 
   window.addEventListener('resize', () => {

@@ -1,4 +1,4 @@
-# AGENTS.md - 羽球戰術板 v0.2
+# AGENTS.md - 羽球戰術板 v0.3
 
 ## 專案說明
 
@@ -16,7 +16,7 @@ badminton-tactical-board/
 │   ├── layout/           # 頂欄、抽屜、側欄
 │   ├── pages/            # 場地、腳本、日誌
 │   └── responsive.css    # 響應式（必須最後載入）
-└── js/                   # ES Modules（18 個文件）
+└── js/                   # ES Modules（20 個文件）
     ├── main.js           # 應用入口
     ├── config/           # 常量
     ├── core/             # 狀態、物理、軌跡
@@ -107,4 +107,4 @@ badminton-tactical-board/
 
 ## 當前版本
 
-v0.2
+v0.3

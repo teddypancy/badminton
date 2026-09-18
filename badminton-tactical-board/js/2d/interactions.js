@@ -5,7 +5,8 @@ import {
 } from '../core/state.js';
 import { getTrajectoryPoint, getInterceptionInfo } from '../core/physics.js';
 import {
-  autoMatchShotProperties, applySmartPositions, cascadeBallPositions
+  autoMatchShotProperties, cascadeBallPositions,
+  recalculateSpeeds, computeHitPoint, matchReceiverSpeed
 } from '../models/shot.js';
 import { getPlayers } from '../models/player.js';
 import { m2px, px2m, render2D } from './renderer.js';
@@ -22,7 +23,6 @@ let pointerStartY = 0;
 let longPressTimer = null;
 let isLongPress = false;
 
-// 吸附範圍（帶緩衝區）
 const SNAP_ENTER = 0.3;
 const SNAP_EXIT = 0.4;
 
@@ -43,6 +43,34 @@ function getHitTarget(mPx) {
   if (!shot) return [];
 
   const hits = [];
+
+  if (state.appMode === 'free') {
+    if (shot.players) {
+      Object.entries(shot.players).forEach(([id, pos]) => {
+        const pPx = m2px(pos.x, pos.z);
+        const dP = Math.hypot(mPx.x - pPx.x, mPx.y - pPx.y);
+        if (dP <= 22) {
+          hits.push({ type: 'player', id: id, dist: dP, label: `球員 ${id}` });
+        }
+      });
+    }
+    hits.sort((a, b) => a.dist - b.dist);
+    return hits;
+  }
+
+  if (shot.isSetup) {
+    if (shot.players) {
+      Object.entries(shot.players).forEach(([id, pos]) => {
+        const pPx = m2px(pos.x, pos.z);
+        const dP = Math.hypot(mPx.x - pPx.x, mPx.y - pPx.y);
+        if (dP <= 22) {
+          hits.push({ type: 'player', id: id, dist: dP, label: `球員 ${id}` });
+        }
+      });
+    }
+    hits.sort((a, b) => a.dist - b.dist);
+    return hits;
+  }
 
   if (!shot.isSetup && !shot.pendingTo) {
     const isFirstShot = state.currentShot === 1;
@@ -141,15 +169,32 @@ function handlePointerDown(e) {
   // ---- 腳本模式 ----
   if (!shot) return;
 
+  if (shot.isSetup) {
+    const hits = getHitTarget(mPx);
+    if (hits.length > 0) {
+      selectAndStartDrag(hits[0]);
+    } else {
+      state.selected = null;
+      render2D();
+      updateParamPanel();
+    }
+    return;
+  }
+
   if (shot.pendingTo) {
     const mPos = px2m(mPx.x, mPx.y);
     const clampedX = Math.max(-COURT.width_d / 2, Math.min(COURT.width_d / 2, mPos.x));
     const clampedZ = Math.max(-COURT.length / 2, Math.min(COURT.length / 2, mPos.z));
     shot.ballTo = { x: clampedX, y: 0.1, z: clampedZ };
     shot.pendingTo = false;
+
     const shots = getShots();
     autoMatchShotProperties(shot, shots, state.mode, state.appMode);
-    applySmartPositions(shot, shots, state.mode, state.appMode);
+
+    // 統一智能匹配：接球方速度 → 攔截點 → 站位；落點確定 → 重算擊球方回中速度
+    matchReceiverSpeed(shot, shots);
+    recalculateSpeeds(shot, state.mode, state.appMode);
+
     cascadeBallPositions(getCurrentIndex(), shots, state.mode, state.appMode);
     render2D();
     sync3DPositions();
@@ -216,23 +261,56 @@ function handlePointerMove(e) {
   const mPos = px2m(mPx.x, mPx.y);
   const shot = getCurrentShot();
 
+  const clampedX = Math.max(-COURT.width_d / 2 - 0.5, Math.min(COURT.width_d / 2 + 0.5, mPos.x));
+  const clampedZ = Math.max(-COURT.length / 2 - 0.5, Math.min(COURT.length / 2 + 0.5, mPos.z));
+
+  // ---- 手繪模式 ----
   if (state.appMode === 'free') {
     if (state.freeDraw.currentPath) {
       state.freeDraw.currentPath.points.push({ x: mPos.x, z: mPos.z });
       render2D();
       return;
     }
+    if (state.selected && state.selected.type === 'player' && shot) {
+      shot.players[state.selected.id].x = clampedX;
+      shot.players[state.selected.id].z = clampedZ;
+      render2D();
+      sync3DPositions();
+      updateParamPanel();
+      return;
+    }
     return;
   }
 
+  // ---- 腳本模式 ----
   if (!state.selected || !shot) return;
 
-  const clampedX = Math.max(-COURT.width_d / 2 - 0.5, Math.min(COURT.width_d / 2 + 0.5, mPos.x));
-  const clampedZ = Math.max(-COURT.length / 2 - 0.5, Math.min(COURT.length / 2 + 0.5, mPos.z));
+  // 第 0 拍：拖動實體球員
+  if (shot.isSetup && state.selected.type === 'player') {
+    shot.players[state.selected.id].x = clampedX;
+    shot.players[state.selected.id].z = clampedZ;
 
-  // ========================================
+    const shots = getShots();
+    if (shots.length > 1) {
+      const striker = state.selected.id.startsWith('A') ? 'A' : 'B';
+      const serverTeam = shots[0].server || 'A';
+      if (striker === serverTeam) {
+        const shot1 = shots[1];
+        shot1.ballFrom.x = clampedX;
+        shot1.ballFrom.z = clampedZ;
+        cascadeBallPositions(1, shots, state.mode, state.appMode);
+      }
+    }
+
+    render2D();
+    sync3DPositions();
+    renderSideProfile(shot);
+    updateParamPanel();
+    updateLog();
+    return;
+  }
+
   // 拖動半透明預覽球員
-  // ========================================
   if (state.selected.type === 'preview') {
     const id = state.selected.id;
     if (!shot.previewPositions) shot.previewPositions = {};
@@ -243,12 +321,10 @@ function handlePointerMove(e) {
     let snapType = null;
     let snapData = null;
 
-    // ---- 吸附判斷（帶緩衝區）----
     const wasSnapped = state.snappedPlayer === id && state.snappedType;
     const currentSnapRange = wasSnapped ? SNAP_EXIT : SNAP_ENTER;
 
     if (state.snapEnabled) {
-      // 1. 優先吸附攔截點
       const intercepts = getInterceptionInfo(shot, state.mode);
       if (intercepts && intercepts.length > 0) {
         for (const ic of intercepts) {
@@ -263,7 +339,6 @@ function handlePointerMove(e) {
         }
       }
 
-      // 2. 次要吸附球軌跡終點
       if (!snapType) {
         const dTo = Math.hypot(clampedX - shot.ballTo.x, clampedZ - shot.ballTo.z);
         if (dTo < currentSnapRange) {
@@ -277,9 +352,6 @@ function handlePointerMove(e) {
     shot.previewPositions[id].x = finalX;
     shot.previewPositions[id].z = finalZ;
 
-    // ========================================
-    // 吸附到攔截點時，設定 interception 並自動調整接球方速度
-    // ========================================
     const defender = shot.striker === 'A' ? 'B' : 'A';
     const isDefender = id.startsWith(defender);
 
@@ -292,17 +364,13 @@ function handlePointerMove(e) {
         t: snapData.t
       };
 
-      // 自動調整接球方速度為「剛好到達攔截點」
-      // 移動距離 = 從當前位置到攔截點的距離
       const defenderPos = shot.players[id];
       if (defenderPos) {
         const moveDist = Math.hypot(
           snapData.snapX - defenderPos.x,
           snapData.snapZ - defenderPos.z
         );
-        // 所需速度 = 移動距離 / 飛行時間
         const reqSpeed = moveDist / Math.max(0.1, snapData.flightTime);
-        // 限制在 1.0 ~ 8.0 範圍
         const finalSpeed = Math.max(1.0, Math.min(8.0, reqSpeed));
         shot.players[id].speed = parseFloat(finalSpeed.toFixed(1));
       }
@@ -313,7 +381,15 @@ function handlePointerMove(e) {
     state.snappedPlayer = snapType ? id : null;
     state.snappedType = snapType;
 
+    // 只重算速度，不重設 previewPositions
+    recalculateSpeeds(shot, state.mode, state.appMode);
+
+    // 重算 hitPoint
     const shots = getShots();
+    const idx = getCurrentIndex();
+    const prevShot = idx > 0 ? shots[idx - 1] : null;
+    shot.hitPoint = computeHitPoint(shot, prevShot, shot.hitLevel || 'high');
+
     cascadeBallPositions(getCurrentIndex(), shots, state.mode, state.appMode);
 
     render2D();
@@ -327,29 +403,29 @@ function handlePointerMove(e) {
   if (state.selected.type === 'ball' && state.selected.point === 'from') {
     shot.ballFrom.x = clampedX;
     shot.ballFrom.z = clampedZ;
+
+    // 軌跡起點改變 → 接球方速度重匹配 + 擊球方回中速度重算
+    matchReceiverSpeed(shot, getShots());
+    recalculateSpeeds(shot, state.mode, state.appMode);
   }
-  // 拖動球軌跡終點
+  // 拖動球軌跡終點（理論落點）
   else if (state.selected.type === 'ball' && state.selected.point === 'to') {
     shot.ballTo.x = clampedX;
     shot.ballTo.z = clampedZ;
+    shot.ballTo.y = 0.1;  // 確保是地面落點
 
-    if (shot.interception) {
-      shot.interception = null;
-    }
+    // 統一智能匹配（拖動中即時）：接球方速度 → 攔截點 → 站位；
+    // 落點變化 → 同步重算擊球方回中速度
+    matchReceiverSpeed(shot, getShots());
+    recalculateSpeeds(shot, state.mode, state.appMode);
 
-    const defender = shot.striker === 'A' ? 'B' : 'A';
+    // 接球方 preview 永遠吸附落點（攔截點只影響 3D 切拍時刻，不影響 2D 站位）；手動模式也適用
     if (shot.previewPositions) {
+      const defender = shot.striker === 'A' ? 'B' : 'A';
       const defenderIds = getPlayers(state.mode)[defender] || [];
-      defenderIds.forEach((did, idx) => {
-        if (idx === 0) {
-          shot.previewPositions[did] = { x: clampedX, z: clampedZ };
-        }
-      });
-    }
-
-    if (state.appMode === 'smart') {
-      const shots = getShots();
-      applySmartPositions(shot, shots, state.mode, state.appMode);
+      if (defenderIds.length > 0 && shot.ballTo) {
+        shot.previewPositions[defenderIds[0]] = { x: shot.ballTo.x, z: shot.ballTo.z };
+      }
     }
   }
 
@@ -385,6 +461,23 @@ function handlePointerUp(e) {
       }
       state.freeDraw.currentPath = null;
       render2D();
+    }
+  }
+
+  // 拖動結束：終點拖曳完成 → 統一智能匹配（接球方速度 → 攔截點 → 站位）
+  if (state.appMode !== 'free' && isDragging &&
+      state.selected && state.selected.type === 'ball' && state.selected.point === 'to') {
+    const shot = getCurrentShot();
+    if (shot && !shot.isSetup && !shot.pendingTo) {
+      const shots = getShots();
+      matchReceiverSpeed(shot, shots);
+      recalculateSpeeds(shot, state.mode, state.appMode);
+      cascadeBallPositions(getCurrentIndex(), shots, state.mode, state.appMode);
+      render2D();
+      sync3DPositions();
+      renderSideProfile(shot);
+      updateParamPanel();
+      updateLog();
     }
   }
 

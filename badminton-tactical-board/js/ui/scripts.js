@@ -27,9 +27,6 @@ let currentScriptId = null;
 
 // ========== localStorage 操作 ==========
 
-/**
- * 儲存腳本庫到 localStorage
- */
 function saveToStorage() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(scriptLibrary));
@@ -41,9 +38,6 @@ function saveToStorage() {
   }
 }
 
-/**
- * 從 localStorage 載入腳本庫
- */
 function loadFromStorage() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -68,9 +62,6 @@ function loadFromStorage() {
 
 // ========== 腳本庫初始化 ==========
 
-/**
- * 建立預設腳本
- */
 function createDefaultScript() {
   return {
     id: 'script_' + Date.now(),
@@ -86,10 +77,6 @@ function createDefaultScript() {
   };
 }
 
-/**
- * 初始化腳本庫
- * 優先從 localStorage 載入；若無，建立預設
- */
 function initScriptLibrary() {
   if (scriptLibrary.length === 0) {
     const loaded = loadFromStorage();
@@ -104,13 +91,9 @@ function initScriptLibrary() {
 
 // ========== 舊腳本遷移 ==========
 
-/**
- * 修復舊腳本：補上新欄位
- */
 function migrateShot(shot) {
   if (!shot) return shot;
 
-  // 第 0 拍
   if (shot.isSetup) {
     if (shot.previewPositions === undefined) {
       shot.previewPositions = null;
@@ -121,12 +104,10 @@ function migrateShot(shot) {
     return shot;
   }
 
-  // 第 1 拍以後
   if (shot.interception === undefined) {
     shot.interception = null;
   }
 
-  // previewPositions：若無，從 players 生成
   if (!shot.previewPositions && shot.players) {
     shot.previewPositions = {};
     const striker = shot.striker;
@@ -199,14 +180,12 @@ export function loadScriptFromLibrary(id) {
   state.mode = script.data.mode || script.type || 'singles';
   state.appMode = script.data.appMode || 'smart';
 
-  // 複製 shots，並修復舊腳本
   const loadedShots = deepClone(script.data.shots || []);
   state.shots = loadedShots.map(migrateShot);
 
   state.history = [];
   state.redoHistory = [];
 
-  // 儲存當前腳本 ID
   saveToStorage();
 
   if (window.setCurrentShot) window.setCurrentShot(0);
@@ -301,9 +280,6 @@ export function updateScriptsList() {
 
 // ========== 導入/導出 ==========
 
-/**
- * 導出所有腳本
- */
 export function exportAllScripts() {
   initScriptLibrary();
   syncCurrentToLibrary();
@@ -328,19 +304,23 @@ export function exportAllScripts() {
  * 支援兩種格式：
  * 1. 新格式：{ version, exportedAt, scripts: [...] }
  * 2. 舊格式：直接是陣列 [...]
+ *
+ * 合併邏輯：
+ *   用 name + type 找同名同類型的腳本
+ *   - 相同 modifiedAt → 跳過
+ *   - 匯入的較新 → 取代
+ *   - 匯入的較舊 → 跳過
+ *   - 沒找到 → 新增
  */
 export function importScripts(jsonData) {
   initScriptLibrary();
   try {
     const parsed = JSON.parse(jsonData);
 
-    // 判斷格式
     let importedScripts;
     if (Array.isArray(parsed)) {
-      // 舊格式：直接是陣列
       importedScripts = parsed;
     } else if (parsed && Array.isArray(parsed.scripts)) {
-      // 新格式
       importedScripts = parsed.scripts;
     } else {
       alert('JSON 格式不符：需要腳本陣列或 { scripts: [...] }');
@@ -359,38 +339,74 @@ export function importScripts(jsonData) {
       if (s.data && Array.isArray(s.data.shots)) {
         s.data.shots = s.data.shots.map(migrateShot);
       }
+      // 確保 modifiedAt 存在
+      if (!s.data.modifiedAt) {
+        s.data.modifiedAt = new Date(0).toISOString(); // 很早的時間
+      }
     });
 
     // 合併策略：詢問使用者
     const hasExisting = scriptLibrary.length > 0;
-    let mergeMode = 'replace'; // 預設取代
+    let mergeMode = 'smart'; // 預設智慧合併
 
     if (hasExisting) {
       const answer = confirm(
         `目前已有 ${scriptLibrary.length} 個腳本。\n\n` +
-        `點「確定」= 合併（保留現有 + 新增導入）\n` +
+        `點「確定」= 智慧合併（比對時間戳，新的取代舊的）\n` +
         `點「取消」= 取代（清空現有，只保留導入）`
       );
-      mergeMode = answer ? 'merge' : 'replace';
+      mergeMode = answer ? 'smart' : 'replace';
     }
 
     if (mergeMode === 'replace') {
+      // 取代模式：直接清空
       scriptLibrary = importedScripts;
     } else {
-      // 合併：避免 ID 衝突
-      importedScripts.forEach(s => {
-        if (scriptLibrary.find(existing => existing.id === s.id)) {
-          s.id = 'script_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+      // 智慧合併模式
+      let addedCount = 0;
+      let replacedCount = 0;
+      let skippedCount = 0;
+
+      importedScripts.forEach(imported => {
+        // 用 name + type 找現有腳本
+        const existingIndex = scriptLibrary.findIndex(
+          existing => existing.name === imported.name && existing.type === imported.type
+        );
+
+        if (existingIndex === -1) {
+          // 沒找到，新增
+          scriptLibrary.push(imported);
+          addedCount++;
+        } else {
+          // 找到，比對時間戳
+          const existing = scriptLibrary[existingIndex];
+          const existingTime = existing.data?.modifiedAt || new Date(0).toISOString();
+          const importedTime = imported.data?.modifiedAt || new Date(0).toISOString();
+
+          if (importedTime > existingTime) {
+            // 匯入的較新 → 取代
+            scriptLibrary[existingIndex] = imported;
+            replacedCount++;
+          } else {
+            // 匯入的較舊或相同 → 跳過
+            skippedCount++;
+          }
         }
-        scriptLibrary.push(s);
       });
+
+      showToast(
+        `智慧合併完成：新增 ${addedCount}、取代 ${replacedCount}、跳過 ${skippedCount}`
+      );
     }
 
     currentScriptId = scriptLibrary[0].id;
     saveToStorage();
     loadScriptFromLibrary(currentScriptId);
     if (window.updateLogButton) window.updateLogButton();
-    showToast(`導入成功（${mergeMode === 'merge' ? '合併' : '取代'}）：${importedScripts.length} 個腳本`);
+
+    if (mergeMode === 'replace') {
+      showToast(`導入成功（取代）：${importedScripts.length} 個腳本`);
+    }
     return true;
 
   } catch (err) {
@@ -401,7 +417,7 @@ export function importScripts(jsonData) {
 }
 
 /**
- * 清空 localStorage（用於測試或重置）
+ * 清空 localStorage
  */
 export function clearStorage() {
   if (!confirm('確定清空所有本地儲存的腳本？此操作無法撤銷。')) return;

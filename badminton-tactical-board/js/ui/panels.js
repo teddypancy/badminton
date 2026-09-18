@@ -42,7 +42,6 @@ export function updateParamPanel() {
   const diagContent = document.getElementById('diagnostic-content');
   const panelWrap = document.getElementById('panel-wrap');
 
-  // 手繪模式：隱藏整個參數區
   if (state.appMode === 'free') {
     if (panelWrap) panelWrap.classList.add('hidden-panel');
     return;
@@ -54,7 +53,6 @@ export function updateParamPanel() {
 
   renderSideProfile(shot);
 
-  // 第 0 拍
   if (shot.isSetup) {
     let html = `<h4>🎯 發接發站位</h4>`;
     html += `
@@ -74,7 +72,7 @@ export function updateParamPanel() {
           <label style="width:60px;">${teamLabel}${id}</label>
           <div class="slider-container" style="flex:1;max-width:160px;">
             <button class="step-btn" onclick="window.adjustPlayerSpeed('${id}', -0.2)">−</button>
-            <span class="slider-val" style="min-width:36px;font-size:12px;">${(p.speed || 3.0).toFixed(1)}</span>
+            <span class="slider-val" style="min-width:36px;font-size:12px;">${(p.speed || 2.0).toFixed(1)}</span>
             <button class="step-btn" onclick="window.adjustPlayerSpeed('${id}', 0.2)">+</button>
           </div>
         </div>
@@ -83,40 +81,43 @@ export function updateParamPanel() {
     content.innerHTML = html;
 
     if (diagContent) {
-      diagContent.innerHTML = `<div style="font-size:11px;color:#78909c;">第 0 拍：初始站位調整</div>`;
+      diagContent.innerHTML = `<div class="physics-diag ok" style="margin-bottom:0;">調整發接發站位</div>`;
     }
     return;
   }
 
-  // ===== 第 1 拍以後 =====
   const shots = getShots();
   const diag = checkPhysics(shot, shots, state.mode);
   const prevShot = state.currentShot > 0 ? shots[state.currentShot - 1] : null;
 
-  // ---- 參數區 ----
+  const striker = shot.striker;
+  const defender = striker === 'A' ? 'B' : 'A';
+
   let html = '';
 
-  // 球員速度
   html += `<div style="font-weight:bold; color:#ffd54f; font-size:11px; margin-bottom:4px;">⚡ 球員速度</div>`;
   const playerEntries = Object.entries(shot.players);
   const cols = playerEntries.length >= 3 ? 2 : 1;
   html += `<div style="display:grid; grid-template-columns: ${cols === 2 ? '1fr 1fr' : '1fr'}; gap:4px; margin-bottom:8px;">`;
 
   playerEntries.forEach(([id, p]) => {
-    const isStriker = id.startsWith(shot.striker);
+    const isStriker = id.startsWith(striker);
     const teamLabel = id.startsWith('A') ? '藍' : '紅';
     const roleLabel = isStriker ? '⚔️' : '🛡️';
 
     const prevSpeed = prevShot?.players?.[id]?.speed;
-    const speedColor = getSpeedColor(p.speed || 3.0, prevSpeed);
+    const speedColor = getSpeedColor(p.speed || 2.0, prevSpeed);
 
     let finalColor = speedColor;
-    const diagSpeedWarns = diag.speedWarns || [];
-    const warn = diagSpeedWarns.find(w => w.id === id);
-    if (warn && warn.type === 'extreme') {
-      finalColor = '#ff1744';
-    } else if (warn && warn.type === 'need_faster') {
-      finalColor = '#ff8a80';
+    if (!isStriker) {
+      const playerMove = diag.stats?.playerMovements?.[id];
+      if (playerMove) {
+        if (playerMove.requiredSpeed > LIMITS.playerMaxSpeed) {
+          finalColor = '#ff1744';
+        } else if (playerMove.requiredSpeed > (p.speed || 2.0)) {
+          finalColor = '#ff8a80';
+        }
+      }
     }
 
     html += `
@@ -124,7 +125,7 @@ export function updateParamPanel() {
         <label style="width:50px;font-size:10px;">${teamLabel}${id} ${roleLabel}</label>
         <div class="slider-container" style="flex:1;max-width:120px;">
           <button class="step-btn" onclick="window.adjustPlayerSpeed('${id}', -0.2)" style="padding:1px 6px;font-size:12px;">−</button>
-          <span class="slider-val" style="color:${finalColor};min-width:32px;font-size:11px;">${(p.speed || 3.0).toFixed(1)}</span>
+          <span class="slider-val" style="color:${finalColor};min-width:32px;font-size:11px;">${(p.speed || 2.0).toFixed(1)}</span>
           <button class="step-btn" onclick="window.adjustPlayerSpeed('${id}', 0.2)" style="padding:1px 6px;font-size:12px;">+</button>
         </div>
       </div>
@@ -132,7 +133,6 @@ export function updateParamPanel() {
   });
   html += `</div>`;
 
-  // 擊球姿態
   html += `
     <div class="param-row">
       <label>擊球姿態：</label>
@@ -143,8 +143,11 @@ export function updateParamPanel() {
     </div>
   `;
 
-  // 擊球高度
   const isFirstShot = state.currentShot === 1;
+  // 前一拍為快壓/輕壓球時，本拍宣告高位物理上不可行（壓制球過網即低於 2.0m），操作當下提示
+  const prevIsPress = !!(prevShot && !prevShot.isSetup && !prevShot.pendingTo &&
+    (prevShot.arcType === 'fast_press' || prevShot.arcType === 'soft_press'));
+  const pressHighWarn = prevIsPress && shot.hitLevel === 'high';
   html += `
     <div class="param-row">
       <label>擊球高度：</label>
@@ -154,12 +157,13 @@ export function updateParamPanel() {
         <button class="${shot.hitLevel === 'low' ? 'active' : ''}" onclick="window.setHitLevel('low')" ${isFirstShot ? 'disabled' : ''}>低位</button>
       </div>
     </div>
-    <div style="font-size:10px; color:#78909c; margin-top:-2px; margin-bottom:6px; padding-left:2px;">
-      ${isFirstShot ? '🔒 第1拍固定低位發球 (1.15m)' : '高位 2.0m↑ · 中位 1.4-2.0m · 低位 1.4m↓'}
-    </div>
+    ${pressHighWarn
+      ? '<div style="font-size:10px; color:#ff8a80; margin-top:-2px; margin-bottom:6px; padding-left:2px;">⚠️ 前一拍為快壓球，高位不可達，已按中位配速</div>'
+      : `<div style="font-size:10px; color:#78909c; margin-top:-2px; margin-bottom:6px; padding-left:2px;">
+          ${isFirstShot ? '🔒 第1拍固定低位發球 (1.15m)' : '高位 2.0m↑ · 中位 1.4-2.0m · 低位 1.4m↓'}
+        </div>`}
   `;
 
-  // 球路類型
   const showPressOptions = shot.hitLevel === 'high';
   html += `
     <div class="param-row">
@@ -177,7 +181,6 @@ export function updateParamPanel() {
     ${!showPressOptions ? '<div style="font-size:10px; color:#78909c; margin-top:-2px; margin-bottom:6px;">💡 快壓/輕壓僅限高位</div>' : ''}
   `;
 
-  // Apex 控制
   const isPress = shot.arcType === 'fast_press' || shot.arcType === 'soft_press';
   html += `
     <div class="param-row">
@@ -202,7 +205,6 @@ export function updateParamPanel() {
 
   content.innerHTML = html;
 
-  // ===== 物理診斷區 =====
   if (diagContent) {
     let diagHtml = '';
 
@@ -210,7 +212,7 @@ export function updateParamPanel() {
 
     if (diag.stats) {
       const s = diag.stats;
-      diagHtml += `<div style="font-size:11px; background:rgba(0,0,0,0.2); border-radius:4px; padding:6px 8px; margin-bottom:6px;">`;
+      diagHtml += `<div style="font-size:11px; background:rgba(0,0,0,0.2); border-radius:4px; padding:6px 8px;">`;
       diagHtml += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">`;
       diagHtml += `<div>🎯 初速：<strong style="color:#ffd54f;">${s.initialSpeed}</strong> km/h</div>`;
       diagHtml += `<div>📊 均速：<strong style="color:#ffd54f;">${s.averageSpeed}</strong> km/h</div>`;
@@ -222,18 +224,7 @@ export function updateParamPanel() {
         const netColor = s.netClearance >= 1.55 ? '#81c784' : '#ff8a65';
         diagHtml += `<div style="margin-top:4px;">🌐 過網：<strong style="color:${netColor};">${s.netClearance.toFixed(2)}</strong> m</div>`;
       }
-
-      if (shot.interception) {
-        diagHtml += `<div style="margin-top:4px; color:#ff1744;">⚡ 攔截於：<strong>${shot.interception.height.toFixed(2)}</strong> m（球員 ${shot.interception.playerId}）</div>`;
-      }
       diagHtml += `</div>`;
-    }
-
-    if (diag.speedWarns && diag.speedWarns.length > 0) {
-      diag.speedWarns.forEach(warn => {
-        const warnColor = warn.type === 'extreme' ? '#ff1744' : '#ff8a80';
-        diagHtml += `<div style="font-size:10px;color:${warnColor};padding:2px 4px;">${warn.msg}</div>`;
-      });
     }
 
     diagContent.innerHTML = diagHtml;

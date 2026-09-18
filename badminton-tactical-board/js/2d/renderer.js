@@ -1,7 +1,6 @@
 import { COURT } from '../config/constants.js';
 import { getState, getCurrentShot, getFreeDraw } from '../core/state.js';
 import { getTrajectoryPoint, getInterceptionInfo } from '../core/physics.js';
-import { getEffectiveEnd } from '../models/shot.js';
 import { getPlayers } from '../models/player.js';
 import { showMiniPopup, hideMiniPopup } from './popup.js';
 import { renderSideProfile } from './sideprofile.js';
@@ -193,7 +192,6 @@ function drawPreviewPlayers(shot) {
     const colorFade = id.startsWith('A') ? 'rgba(33, 150, 243, 0.4)' : 'rgba(255, 82, 82, 0.4)';
     const colorFill = id.startsWith('A') ? 'rgba(33, 150, 243, 0.25)' : 'rgba(255, 82, 82, 0.25)';
 
-    // 虛線連接實體與半透明
     ctx.save();
     ctx.strokeStyle = colorFade;
     ctx.lineWidth = 2;
@@ -204,7 +202,6 @@ function drawPreviewPlayers(shot) {
     ctx.stroke();
     ctx.restore();
 
-    // 半透明圓圈
     ctx.save();
     ctx.fillStyle = colorFill;
     ctx.strokeStyle = color;
@@ -333,23 +330,21 @@ export function render2D() {
   if (!shot.isSetup && !shot.pendingTo) {
     const from = m2px(shot.ballFrom.x, shot.ballFrom.z);
     const to = m2px(shot.ballTo.x, shot.ballTo.z);
-    const effectiveEnd = getEffectiveEnd(shot);
-    const effectiveEndPx = m2px(effectiveEnd.x, effectiveEnd.z);
     const hasInterception = shot.interception && shot.interception.pt;
     const isSelectedBall = state.selected?.type === 'ball';
 
-    // 白色直線（從起點到有效終點）
+    // 白色直線（從起點到落點；攔截點不影響 2D 顯示，只影響 3D 切拍時刻）
     ctx.save();
     ctx.strokeStyle = isSelectedBall ? '#ffffff' : 'rgba(220, 220, 220, 0.85)';
     ctx.lineWidth = isSelectedBall ? 2.5 : 1.8;
     ctx.setLineDash([6, 5]);
     ctx.beginPath();
     ctx.moveTo(from.x, from.y);
-    ctx.lineTo(effectiveEndPx.x, effectiveEndPx.y);
+    ctx.lineTo(to.x, to.y);
     ctx.stroke();
     ctx.restore();
 
-    // 黃色真實拋物線（從起點到有效終點）
+    // 黃色真實拋物線
     const arcData = getArcPoints2D(shot);
     if (arcData && arcData.points && arcData.points.length > 1) {
       ctx.save();
@@ -365,14 +360,13 @@ export function render2D() {
       ctx.restore();
     }
 
-    // === 新增：攔截時，從攔截點到 ballTo 的淡化虛線 ===
+    // 攔截時，從攔截點到 ballTo 的淡化虛線
     if (hasInterception) {
-      // 用直線連接攔截點與 ballTo（2D 座標）
       const icEndPx = m2px(shot.interception.pt.x, shot.interception.pt.z);
       const ballToPx = m2px(shot.ballTo.x, shot.ballTo.z);
 
       ctx.save();
-      ctx.strokeStyle = 'rgba(255, 213, 79, 0.3)';  // 淡化黃色
+      ctx.strokeStyle = 'rgba(255, 213, 79, 0.3)';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
@@ -381,7 +375,6 @@ export function render2D() {
       ctx.stroke();
       ctx.restore();
 
-      // 淡化的 ballTo 橙色圓點
       ctx.save();
       ctx.globalAlpha = 0.3;
       ctx.fillStyle = '#f57c00';
@@ -394,7 +387,7 @@ export function render2D() {
       ctx.restore();
     }
 
-    // === 攔截點紅色標記 ===
+    // 攔截點紅色標記
     if (hasInterception) {
       const icPx = m2px(shot.interception.pt.x, shot.interception.pt.z);
       ctx.save();
@@ -501,14 +494,12 @@ export function render2D() {
 
     // 落點（ballTo）
     if (!hasInterception) {
-      // 無攔截：正常顯示
       ctx.fillStyle = (state.selected?.type === 'ball' && state.selected.point === 'to') ? '#ffffff' : '#f57c00';
       ctx.beginPath();
       ctx.arc(to.x, to.y, 10, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
     } else {
-      // 有攔截：淡化顯示
       ctx.save();
       ctx.globalAlpha = 0.3;
       ctx.fillStyle = '#f57c00';
@@ -521,12 +512,12 @@ export function render2D() {
   }
 
   // ========================================
-  // 半透明預覽（從 shot.previewPositions 讀取）
+  // 半透明預覽
   // ========================================
   if (!shot.isSetup && !shot.pendingTo && shot.previewPositions) {
     drawPreviewPlayers(shot);
   }
 
-  // --- 繪製球員實體（最後畫，確保在最上層） ---
+  // --- 繪製球員實體 ---
   drawPlayers(shot);
 }
