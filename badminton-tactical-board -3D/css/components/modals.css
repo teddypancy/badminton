@@ -1,0 +1,204 @@
+/* ===== 模態面板（置中） ===== */
+.modal-panel {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 460px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 80px);
+  background: rgba(15, 34, 64, 0.96);
+  backdrop-filter: blur(16px);
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-xl);
+  z-index: 95;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ===== 下拉面板（右上角） ===== */
+.dropdown-panel {
+  position: fixed;
+  top: 56px;
+  right: 16px;
+  width: 460px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 80px);
+  background: rgba(15, 34, 64, 0.96);
+  backdrop-filter: blur(16px);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-color-light);
+  box-shadow: var(--shadow-lg);
+  z-index: 96;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ===== 面板標題（共用） ===== */
+.modal-panel .modal-header,
+.dropdown-panel .dropdown-header {
+  padding: 10px 16px;
+  background: var(--bg-panel-light);
+  font-size: var(--font-lg);
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  color: var(--text-accent);
+  gap: var(--gap-lg);
+  flex-wrap: wrap;
+}
+
+.modal-panel .modal-header {
+  padding: 12px 16px;
+}
+
+/* ===== 面板內容（共用） ===== */
+.modal-panel .modal-body,
+.dropdown-panel .dropdown-body {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-panel .modal-body {
+  padding: 12px 16px;
+}
+
+.dropdown-panel .dropdown-body {
+  padding: 8px 12px;
+}
+
+/* ===== Header 動作區 ===== */
+.dropdown-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  flex-shrink: 0;
+}
+
+/* ===== 工具列 ===== */
+.modal-toolbar {
+  display: flex;
+  gap: var(--gap-sm);
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+/* ===== 模態覆蓋層 ===== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-card {
+  background: rgba(15, 34, 64, 0.96);
+  backdrop-filter: blur(16px);
+  border-radius: var(--radius-2xl);
+  padding: 20px 24px;
+  min-width: 280px;
+  max-width: 90vw;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-xl);
+}
+
+.modal-card .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--gap-xl);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-accent);
+}
+
+/* ===== 網格佈局 ===== */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* ===== 類型選擇按鈕 ===== */
+.type-btn {
+  padding: 14px 12px;
+  background: var(--bg-panel-light);
+  border: 2px solid transparent;
+  border-radius: var(--radius-xl);
+  font-size: var(--font-lg);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.type-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(245, 124, 0, 0.3);
+  transform: scale(1.02);
+}
+
+.type-btn:active {
+  transform: scale(0.96);
+}
+
+/* ===== 迷你選擇器 ===== */
+#mini-selector-popup {
+  display: none;
+  position: absolute;
+  z-index: 150;
+  background: var(--bg-panel);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 215, 79, 0.3);
+  border-radius: var(--radius-xl);
+  padding: 8px 10px;
+  box-shadow: var(--shadow-lg);
+  min-width: 140px;
+}
+
+#mini-popup-title {
+  color: var(--text-accent);
+  font-weight: 600;
+  font-size: var(--font-sm);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: var(--gap-xs);
+  margin-bottom: var(--gap-sm);
+}
+
+#mini-popup-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+}
+
+#mini-popup-options button {
+  text-align: left;
+  padding: 6px 10px;
+  font-size: var(--font-md);
+  background: var(--bg-panel-light);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+#mini-popup-options button:hover {
+  background: rgba(245, 124, 0, 0.25);
+  color: #fff;
+}

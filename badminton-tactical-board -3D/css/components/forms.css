@@ -1,0 +1,151 @@
+/* ===== 參數行 ===== */
+.param-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  margin-bottom: var(--gap-sm);
+  font-size: var(--font-md);
+}
+
+.param-row label {
+  width: 64px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  font-size: var(--font-sm);
+  font-weight: 500;
+}
+
+/* ===== 參數按鈕組 ===== */
+.param-btns {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.param-btns button {
+  flex: 1;
+  min-width: 32px;
+  padding: 4px 0;
+  font-size: var(--font-sm);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--bg-panel-light);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.param-btns button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.param-btns button.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.param-btns button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ===== 滑桿容器 ===== */
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-xs);
+  flex: 1;
+}
+
+.slider-container input[type="range"] {
+  flex: 1;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+  background: transparent;
+  height: 3px;
+}
+
+.slider-container .step-btn {
+  padding: 2px 8px;
+  font-size: var(--font-base);
+  font-weight: 700;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--bg-panel-light);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.slider-container .step-btn:hover:not(:disabled) {
+  background: rgba(245, 124, 0, 0.2);
+  color: var(--text-accent);
+}
+
+.slider-container .step-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.slider-val {
+  font-size: var(--font-md);
+  color: var(--text-accent);
+  min-width: 40px;
+  text-align: right;
+  font-weight: 600;
+}
+
+/* ===== 顏色選擇器 ===== */
+#color-picker-list {
+  display: flex;
+  gap: var(--gap-xs);
+  align-items: center;
+}
+
+.color-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.color-dot:hover {
+  transform: scale(1.15);
+}
+
+.color-dot.active {
+  border-color: #fff;
+  box-shadow: 0 0 8px rgba(245, 124, 0, 0.4);
+}
+
+/* ===== 物理診斷 ===== */
+.physics-diag {
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+  margin-bottom: var(--gap-sm);
+  border: 1px solid transparent;
+}
+
+.physics-diag.ok {
+  background: rgba(46, 125, 50, 0.15);
+  border-color: rgba(46, 125, 50, 0.2);
+  color: #81c784;
+}
+
+.physics-diag.warn {
+  background: rgba(198, 40, 40, 0.15);
+  border-color: rgba(198, 40, 40, 0.2);
+  color: #ff8a80;
+}
+
+.physics-diag.intercept {
+  background: rgba(255, 152, 0, 0.12);
+  border-color: rgba(255, 152, 0, 0.2);
+  color: #ffe082;
+}

@@ -1,0 +1,19 @@
+/* ===== 右側面板（固定 350px） ===== */
+#panel-wrap {
+  width: 350px;
+  min-width: 280px;
+  max-width: 450px;
+  background: rgba(15, 34, 64, 0.6);
+  border-left: 1px solid var(--border-color);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  overflow-y: auto;
+  flex-shrink: 0;
+  transition: width 0.25s ease;
+}
+
+#panel-wrap.hidden-panel {
+  display: none !important;
+}
