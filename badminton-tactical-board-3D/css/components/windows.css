@@ -1,0 +1,166 @@
+/* ===== 浮動小窗基礎 ===== */
+#window-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 90;
+}
+
+.float-window {
+  position: fixed;
+  background: var(--bg-panel);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color-light);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  display: none;
+  flex-direction: column;
+  pointer-events: auto;
+  min-width: 220px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 80px);
+  overflow: hidden;
+  will-change: transform;
+}
+
+.float-window.dragging {
+  backdrop-filter: none;
+  transition: none;
+}
+
+.float-window.open {
+  display: flex;
+}
+
+.float-window .fw-header {
+  padding: 6px 10px;
+  background: var(--bg-panel-light);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-md);
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+  pointer-events: auto;
+  font-size: var(--font-md);
+}
+
+.float-window.dragging .fw-header {
+  cursor: grabbing;
+}
+
+.float-window .fw-title {
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--text-accent);
+}
+
+.float-window .fw-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 2px 5px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.float-window .fw-close:hover {
+  background: rgba(255, 82, 82, 0.15);
+  color: #ff5252;
+}
+
+.float-window .fw-body {
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  padding: 10px 12px;
+}
+
+#log-panel .fw-body,
+#scripts-panel .fw-body {
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+/* ===== 頂欄按鈕 active 狀態 ===== */
+#topbar .btn.active {
+  background: rgba(245, 124, 0, 0.2);
+  border-color: var(--color-primary);
+  color: var(--text-accent);
+}
+
+/* ===== toolbar.css ID 選擇器衝突中和 ===== */
+#integrated-toolbar.float-window {
+  bottom: auto;
+  right: auto;
+  width: auto;
+  z-index: 90;
+  display: none;
+}
+
+#integrated-toolbar.float-window.open {
+  display: flex;
+}
+
+/* ===== 小窗工具列 ===== */
+.float-window .fw-toolbar {
+  display: flex;
+  gap: var(--gap-sm);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* ===== 階段 2 面板尺寸 ===== */
+#param-panel,
+#diag-panel {
+  width: 300px;
+}
+
+#sideprofile-panel {
+  width: 420px;
+}
+
+#log-panel,
+#scripts-panel {
+  width: 340px;
+}
+
+#param-panel .fw-body,
+#diag-panel .fw-body {
+  max-height: calc(100vh - 130px);
+}
+
+#sideprofile-panel .fw-body {
+  padding: 8px;
+}
+
+/* ===== 手機斷點 ===== */
+@media (max-width: 768px) {
+  .float-window {
+    max-width: calc(100vw - 12px);
+    max-height: calc(100vh - 70px);
+    width: calc(100vw - 12px) !important;
+    left: 6px !important;
+    transform: none !important;
+  }
+  .float-window .fw-body {
+    max-height: calc(100vh - 130px);
+  }
+  #param-panel,
+  #sideprofile-panel,
+  #diag-panel,
+  #log-panel,
+  #scripts-panel,
+  #integrated-toolbar {
+    width: calc(100vw - 12px);
+    min-width: 0;
+  }
+}
