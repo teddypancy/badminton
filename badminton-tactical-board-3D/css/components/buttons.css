@@ -1,0 +1,133 @@
+/* ===== 通用按鈕 ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-xs);
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 6px 12px;
+  font-size: var(--font-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  white-space: nowrap;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.btn:hover {
+  background: var(--bg-active);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: scale(0.96);
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ===== 按鈕變體 ===== */
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-color-light);
+}
+
+.btn-outline:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.btn-outline.active {
+  background: rgba(245, 124, 0, 0.2);
+  border-color: var(--color-primary);
+  color: var(--text-accent);
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-hover);
+}
+
+.btn-success {
+  background: var(--color-success);
+  color: #fff;
+}
+
+.btn-success:hover {
+  background: var(--color-success-hover);
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: var(--color-danger-hover);
+}
+
+/* ===== 尺寸變體 ===== */
+.btn-sm {
+  padding: 4px 10px;
+  font-size: var(--font-md);
+  border-radius: var(--radius-md);
+}
+
+.btn-close {
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+}
+
+.btn-close:hover {
+  background: rgba(255, 82, 82, 0.15);
+  color: #ff5252;
+}
+
+/* ===== 圖標按鈕 ===== */
+.icon-btn {
+  padding: 4px 8px;
+  font-size: var(--font-lg);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* ===== 工具按鈕 ===== */
+.tool-btn {
+  padding: 4px 8px;
+  font-size: 16px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tool-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.tool-btn.active {
+  background: rgba(245, 124, 0, 0.25);
+  color: var(--text-accent);
+}

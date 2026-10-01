@@ -1,0 +1,84 @@
+/* ===== 腳本列表項 ===== */
+.script-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-panel-light);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--gap-xs);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-left: 3px solid transparent;
+  gap: var(--gap-md);
+}
+
+.script-item:hover {
+  background: var(--bg-hover);
+}
+
+.script-item.current {
+  border-left-color: var(--color-primary);
+  background: rgba(245, 124, 0, 0.08);
+}
+
+.script-item .info {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-lg);
+  flex: 1;
+  min-width: 0;
+}
+
+.script-item .info .name {
+  color: var(--text-accent);
+  font-weight: 500;
+  font-size: var(--font-base);
+  white-space: nowrap;
+}
+
+.script-item .info .meta {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  white-space: nowrap;
+}
+
+.script-item .actions {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-xs);
+  flex-shrink: 0;
+}
+
+.script-item .actions button {
+  padding: 4px 10px;
+  font-size: var(--font-md);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-weight: 500;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-xs);
+}
+
+.script-item .actions .btn-edit {
+  background: rgba(100, 181, 246, 0.12);
+  color: #64b5f6;
+}
+
+.script-item .actions .btn-edit:hover {
+  background: rgba(100, 181, 246, 0.25);
+  color: #90caf9;
+}
+
+.script-item .actions .btn-del {
+  background: rgba(255, 82, 82, 0.10);
+  color: #ff8a80;
+}
+
+.script-item .actions .btn-del:hover {
+  background: rgba(255, 82, 82, 0.25);
+  color: #ff5252;
+}

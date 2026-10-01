@@ -1,0 +1,66 @@
+/* ===== 模態覆蓋層 ===== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-card {
+  background: rgba(15, 34, 64, 0.96);
+  backdrop-filter: blur(16px);
+  border-radius: var(--radius-2xl);
+  padding: 20px 24px;
+  min-width: 280px;
+  max-width: 90vw;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-xl);
+}
+
+.modal-card .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--gap-xl);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-accent);
+}
+
+/* ===== 網格佈局 ===== */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* ===== 類型選擇按鈕 ===== */
+.type-btn {
+  padding: 14px 12px;
+  background: var(--bg-panel-light);
+  border: 2px solid transparent;
+  border-radius: var(--radius-xl);
+  font-size: var(--font-lg);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.type-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(245, 124, 0, 0.3);
+  transform: scale(1.02);
+}
+
+.type-btn:active {
+  transform: scale(0.96);
+}

@@ -1,0 +1,25 @@
+/* ===== 場地容器 ===== */
+#court-wrap {
+  flex: 1;
+  position: relative;
+  background: #060e1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gap-md);
+  overflow: hidden;
+  min-width: 200px;
+}
+
+#court2d {
+  background: var(--bg-primary);
+  cursor: grab;
+  display: block;
+  touch-action: none;
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.3);
+}
+
+#court2d:active {
+  cursor: grabbing;
+}

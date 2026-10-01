@@ -1,0 +1,22 @@
+/* ===== 標題 ===== */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.panel-section h4 {
+  font-size: var(--font-md);
+  font-weight: 600;
+  margin-bottom: var(--gap-md);
+  color: var(--text-accent);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  letter-spacing: 0.3px;
+}
+
+/* ===== 載入文字 ===== */
+.loading-text {
+  font-size: var(--font-md);
+  color: #666;
+}
